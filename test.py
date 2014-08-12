@@ -12,6 +12,7 @@ from OpenGL.GL import *
 class CoordinateSystem(object):
     def draw(self, line_width=1, color=(1.0, 0.0, 0.0)):
         glEnable(GL_DEPTH_TEST)
+        glEnable(GL_LINE_SMOOTH)
         glShadeModel(GL_FLAT)
         glPushMatrix()
         glLineWidth(line_width)
@@ -93,13 +94,18 @@ class Camera(object):
 camera = Camera(distance=10)
 
 def draw():
+    global quadratic
+
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
     glLoadIdentity()
-
-    camera.rotate_y(1)
+    camera.rotate_y(0.1)
     camera.look()
     coordinate_system.draw()
     detector_line.draw(1)
+
+    glEnable(GL_LIGHTING)
+    gluSphere(quadratic,0.3,32,32)
+    glDisable(GL_LIGHTING)
     
     glutSwapBuffers()
 
@@ -144,6 +150,10 @@ def dmenu(item):
     return 0
 
 if __name__ == "__main__":
+    global quadratic
+    quadratic = gluNewQuadric()
+    gluQuadricNormals(quadratic, GLU_SMOOTH)
+
     glutInit()
     glutInitWindowPosition(112, 84)
     glutInitWindowSize(800, 600)
@@ -169,6 +179,10 @@ if __name__ == "__main__":
     glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 30)
     glMatrixMode(GL_MODELVIEW)
 
+    glLightfv(GL_LIGHT0, GL_AMBIENT, (1.0, 1.0, 1.0, 1.0))		# Setup The Ambient Light
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, (1.0, 1.0, 1.0, 1.0))		# Setup The Diffuse Light
+    glLightfv(GL_LIGHT0, GL_POSITION, (0.0, 0.0, 2.0, 1.0))	# Position The Light
+    glEnable(GL_LIGHT0)					# Enable Light One
 
     # start event processing */
     print 'RIGHT-CLICK to display the menu.'
