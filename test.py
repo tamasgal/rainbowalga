@@ -64,36 +64,39 @@ class Position(object):
         
         
 class Camera(object):
-    def __init__(self, zoom=1):
-        self.pos = Position(1, 0, 0)
+    def __init__(self, distance=1):
         self.target = Position(0, 0, 0)
         self.up = Position(0, 1, 0)
-        self._zoom = zoom
-        self._pos = np.array((self.pos.x, self.pos.y, self.pos.z))
+        self._pos = np.array((1, 1, 1))
+        self.distance = distance
         
     @property
-    def zoom(self):
-        return self._zoom
-        
-    @zoom.setter
-    def zoom(self, value):
+    def pos(self):
         self._pos = self._pos / np.linalg.norm(self._pos)
-        new_position = self._pos * value
-        self.pos = Position(new_position[0], new_position[1], new_position[2])
-        self._zoom = value
-        
+        current_position = self._pos * self.distance
+        return Position(current_position[0], current_position[1], current_position[2])
+
+    def rotate_y(self, angle):
+        theta = angle * np.pi / 180
+        rotation_matrix = np.matrix([[np.cos(theta), 0, np.sin(theta)],
+                                     [0, 1, 0],
+                                     [-np.sin(theta),  -0, np.cos(theta)]])
+        new_position = rotation_matrix.dot(self._pos)
+        self._pos = np.array((new_position[0, 0], new_position[0, 1], new_position[0, 2]))
+
     def look(self):
         gluLookAt(self.pos.x, self.pos.y, self.pos.z,
                   self.target.x, self.target.y, self.target.z,
                   self.up.x, self.up.y, self.up.z)
         
 
-camera = Camera(zoom=10)
+camera = Camera(distance=10)
 
 def draw():
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
     glLoadIdentity()
 
+    camera.rotate_y(1)
     camera.look()
     coordinate_system.draw()
     detector_line.draw(1)
@@ -113,11 +116,11 @@ def process_special_keys(key, x, z):
         camera.rotate(0.1)
 
 def mouse(button, state, x, y):
-    print button, state, x, y
+    #print button, state, x, y
     if button == 3:
-        camera.zoom = camera.zoom + 0.1
+        camera.distance = camera.distance + 0.1
     if button == 4:
-        camera.zoom = camera.zoom - 0.1
+        camera.distance = camera.distance - 0.1
     
 
 
