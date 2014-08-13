@@ -2,6 +2,7 @@ from __future__ import division
 
 import sys
 import math
+from random import random
 
 import numpy as np
 
@@ -43,6 +44,7 @@ class DetectorLine(object):
         glEnable(GL_DEPTH_TEST)
         glShadeModel(GL_FLAT)
         glPushMatrix()
+        glTranslated(self.x, self.y, self.z)
         glLineWidth(line_width)
         glColor3f(1.0, 1.0, 1.0)
         glBegin(GL_LINES)
@@ -97,11 +99,14 @@ class DOM(object):
         glTranslated(self.pos.x, self.pos.y, self.pos.z)
 
         glEnable(GL_LIGHTING)
-        glColor3f(1.0, 0.0, 1.0)
+        color_r = 0.5
+        color_g = 0.0
+        color_b = 0.0
+        glColor3f(color_r, color_g, color_b)
         glEnable(GL_COLOR_MATERIAL)
         glColorMaterial(GL_FRONT, GL_DIFFUSE)
         glDisable(GL_TEXTURE_2D)
-        glutSolidSphere(self.radius, 32, 32)
+        glutSolidSphere(self.radius, 64, 64)
         glDisable(GL_COLOR_MATERIAL)
 
         glDisable(GL_LIGHTING)
@@ -110,12 +115,18 @@ class DOM(object):
 
 
 camera = Camera(distance=10)
-detector_line = DetectorLine(0, 0, 0, 5)
+
+detector_lines = []
+for x in range(20):
+    for z in range(20):
+        detector_line = DetectorLine(x-10, 0, z-10, 5)
+        detector_lines.append(detector_line)
+
 coordinate_system = CoordinateSystem()
 
 
 doms = []
-n = 4
+n = 3
 for x in range(n):
     for y in range(n):
         for z in range(n):
@@ -129,10 +140,11 @@ def draw():
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
     glLoadIdentity()
 
-    camera.rotate_y(0.1)
+    camera.rotate_y(0.5)
     camera.look()
     coordinate_system.draw()
-    detector_line.draw(1)
+    for detector_line in detector_lines:
+        detector_line.draw(1)
     for dom in doms:
         dom.draw()
 
@@ -184,6 +196,12 @@ if __name__ == "__main__":
     gluQuadricNormals(quadratic, GLU_SMOOTH)
 
     glutInit()
+
+    #print 'Vendor: %s' % (glGetString(GL_VENDOR))
+    #print 'Opengl version: %s' % (glGetString(GL_VERSION))
+    #print 'GLSL Version: %s' % (glGetString(GL_SHADING_LANGUAGE_VERSION))
+    #print 'Renderer: %s' % (glGetString(GL_RENDERER))
+
     glutInitWindowPosition(112, 84)
     glutInitWindowSize(800, 600)
     # use multisampling if available 
