@@ -52,10 +52,6 @@ class DetectorLine(object):
         glPopMatrix()
 
 
-detector_line = DetectorLine(0, 0, 0, 5)
-coordinate_system = CoordinateSystem()
-angle = 0
-
 
 class Position(object):
     def __init__(self, x, y, z):
@@ -91,22 +87,55 @@ class Camera(object):
                   self.up.x, self.up.y, self.up.z)
         
 
+class DOM(object):
+    def __init__(self, pos=Position(0, 0, 0), radius=0.2):
+        self.pos = pos
+        self.radius = radius
+
+    def draw(self):
+        glPushMatrix()
+        glTranslated(self.pos.x, self.pos.y, self.pos.z)
+
+        glEnable(GL_LIGHTING)
+        glColor3f(1.0, 0.0, 1.0)
+        glEnable(GL_COLOR_MATERIAL)
+        glColorMaterial(GL_FRONT, GL_DIFFUSE)
+        glDisable(GL_TEXTURE_2D)
+        glutSolidSphere(self.radius, 32, 32)
+        glDisable(GL_COLOR_MATERIAL)
+
+        glDisable(GL_LIGHTING)
+
+        glPopMatrix()
+
+
 camera = Camera(distance=10)
+detector_line = DetectorLine(0, 0, 0, 5)
+coordinate_system = CoordinateSystem()
+
+
+doms = []
+n = 4
+for x in range(n):
+    for y in range(n):
+        for z in range(n):
+            dom = DOM(pos=Position(x - n/2, y - n/2, z - n/2))
+            doms.append(dom)
+
+angle = 0
+
 
 def draw():
-    global quadratic
-
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
     glLoadIdentity()
+
     camera.rotate_y(0.1)
     camera.look()
     coordinate_system.draw()
     detector_line.draw(1)
+    for dom in doms:
+        dom.draw()
 
-    glEnable(GL_LIGHTING)
-    gluSphere(quadratic,0.3,32,32)
-    glDisable(GL_LIGHTING)
-    
     glutSwapBuffers()
 
 
@@ -179,10 +208,30 @@ if __name__ == "__main__":
     glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 30)
     glMatrixMode(GL_MODELVIEW)
 
-    glLightfv(GL_LIGHT0, GL_AMBIENT, (1.0, 1.0, 1.0, 1.0))		# Setup The Ambient Light
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, (1.0, 1.0, 1.0, 1.0))		# Setup The Diffuse Light
-    glLightfv(GL_LIGHT0, GL_POSITION, (0.0, 0.0, 2.0, 1.0))	# Position The Light
-    glEnable(GL_LIGHT0)					# Enable Light One
+    light_ambient = (0.0, 0.0, 0.0, 1.0)
+    light_diffuse = (1.0, 1.0, 1.0, 1.0)
+    light_specular = (1.0, 1.0, 1.0, 1.0)
+    light_position = (-100.0, 100.0, 100.0, 0.0)
+
+    mat_ambient = (0.7, 0.7, 0.7, 1.0)
+    mat_diffuse = (0.8, 0.8, 0.8, 1.0)
+    mat_specular = (1.0, 1.0, 1.0, 1.0)
+    high_shininess = (100)
+
+    glEnable(GL_LIGHT0)
+    glEnable(GL_NORMALIZE)
+    glEnable(GL_COLOR_MATERIAL)
+    glEnable(GL_LIGHTING)
+    
+    glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient)
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse)
+    glLightfv(GL_LIGHT0, GL_SPECULAR,  light_specular)
+    glLightfv(GL_LIGHT0, GL_POSITION, light_position)
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT,   mat_ambient)
+    glMaterialfv(GL_FRONT, GL_DIFFUSE,   mat_diffuse)
+    glMaterialfv(GL_FRONT, GL_SPECULAR,  mat_specular)
+    glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess)
 
     # start event processing */
     print 'RIGHT-CLICK to display the menu.'
