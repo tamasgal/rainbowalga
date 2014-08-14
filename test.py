@@ -1,128 +1,23 @@
 from __future__ import division
 
-import sys
-import math
-from random import random
-
-import numpy as np
-
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
 
-class CoordinateSystem(object):
-    def draw(self, line_width=1, color=(1.0, 0.0, 0.0)):
-        glEnable(GL_DEPTH_TEST)
-        glEnable(GL_LINE_SMOOTH)
-        glShadeModel(GL_FLAT)
-        glPushMatrix()
-        glLineWidth(line_width)
-        glColor3f(*color)
-        glBegin(GL_LINES)
-        glVertex3f(-1.0, 0.0, 0.0)
-        glVertex3f(1.0, 0.0, 0.0)
-        glEnd()
-        glBegin(GL_LINES)
-        glVertex3f(0.0, -1.0, 0.0)
-        glVertex3f(0.0, 1.0, 0.0)
-        glEnd()
-        glBegin(GL_LINES)
-        glVertex3f(0.0, 0.0, -1.0)
-        glVertex3f(0.0, 0.0, 1.0)
-        glEnd()
-        glPopMatrix()
-
-
-class DetectorLine(object):
-    def __init__(self, x, y, z, length):
-        self.x = x
-        self.y = y
-        self.z = z 
-        self.length = length
-        
-    def draw(self, line_width=2):
-        glEnable(GL_DEPTH_TEST)
-        glShadeModel(GL_FLAT)
-        glPushMatrix()
-        glTranslated(self.x, self.y, self.z)
-        glLineWidth(line_width)
-        glColor3f(1.0, 1.0, 1.0)
-        glBegin(GL_LINES)
-        glVertex3f(0.0, 0.0, 0.0)
-        glVertex3f(0.0, self.length, 0.0)
-        glEnd()
-        glPopMatrix()
-
-
-
-class Position(object):
-    def __init__(self, x, y, z):
-        self.x = x
-        self.y = y
-        self.z = z
-        
-        
-class Camera(object):
-    def __init__(self, distance=1):
-        self.target = Position(0, 0, 0)
-        self.up = Position(0, 1, 0)
-        self._pos = np.array((1, 1, 1))
-        self.distance = distance
-        
-    @property
-    def pos(self):
-        self._pos = self._pos / np.linalg.norm(self._pos)
-        current_position = self._pos * self.distance
-        return Position(current_position[0], current_position[1], current_position[2])
-
-    def rotate_y(self, angle):
-        theta = angle * np.pi / 180
-        rotation_matrix = np.matrix([[np.cos(theta), 0, np.sin(theta)],
-                                     [0, 1, 0],
-                                     [-np.sin(theta),  -0, np.cos(theta)]])
-        new_position = rotation_matrix.dot(self._pos)
-        self._pos = np.array((new_position[0, 0], new_position[0, 1], new_position[0, 2]))
-
-    def look(self):
-        gluLookAt(self.pos.x, self.pos.y, self.pos.z,
-                  self.target.x, self.target.y, self.target.z,
-                  self.up.x, self.up.y, self.up.z)
-        
-
-class DOM(object):
-    def __init__(self, pos=Position(0, 0, 0), radius=0.2):
-        self.pos = pos
-        self.radius = radius
-
-    def draw(self):
-        glPushMatrix()
-        glTranslated(self.pos.x, self.pos.y, self.pos.z)
-
-        glEnable(GL_LIGHTING)
-        color_r = 0.5
-        color_g = 0.0
-        color_b = 0.0
-        glColor3f(color_r, color_g, color_b)
-        glEnable(GL_COLOR_MATERIAL)
-        glColorMaterial(GL_FRONT, GL_DIFFUSE)
-        glDisable(GL_TEXTURE_2D)
-        glutSolidSphere(self.radius, 64, 64)
-        glDisable(GL_COLOR_MATERIAL)
-
-        glDisable(GL_LIGHTING)
-
-        glPopMatrix()
+from rainbowalga.core import Position
+from rainbowalga.hardware import (Detector, DetectorLine, DOM) 
+from rainbowalga.tools import (CoordinateSystem, Camera)
 
 
 camera = Camera(distance=10)
+coordinate_system = CoordinateSystem()
+detector = Detector()
 
 detector_lines = []
 for x in range(20):
     for z in range(20):
         detector_line = DetectorLine(x-10, 0, z-10, 5)
         detector_lines.append(detector_line)
-
-coordinate_system = CoordinateSystem()
 
 
 doms = []
@@ -133,18 +28,20 @@ for x in range(n):
             dom = DOM(pos=Position(x - n/2, y - n/2, z - n/2))
             doms.append(dom)
 
-angle = 0
-
 
 def draw():
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
-    glLoadIdentity()
 
     camera.rotate_y(0.5)
     camera.look()
+
     coordinate_system.draw()
-    for detector_line in detector_lines:
-        detector_line.draw(1)
+
+    detector.draw_lines()
+    detector.draw_doms()
+
+    #for detector_line in detector_lines:
+    #    detector_line.draw(1)
     for dom in doms:
         dom.draw()
 
@@ -157,7 +54,6 @@ def process_keyboard(key,  x,  y):
 
 
 def process_special_keys(key, x, z):
-    global angle
     if key == GLUT_KEY_LEFT:
         print("rotating left")
         camera.rotate(0.1)
@@ -165,10 +61,9 @@ def process_special_keys(key, x, z):
 def mouse(button, state, x, y):
     #print button, state, x, y
     if button == 3:
-        camera.distance = camera.distance + 0.1
+        camera.distance = camera.distance + 1
     if button == 4:
-        camera.distance = camera.distance - 0.1
-    
+        camera.distance = camera.distance - 1
 
 
 VOID, RESET, QUIT = range(3)
@@ -222,9 +117,13 @@ if __name__ == "__main__":
     # setup OpenGL state 
     glClearDepth(1.0)
     glClearColor(0.0, 0.0, 0.0, 0.0)
+    #glViewport(0, 0, 800, 600)
     glMatrixMode(GL_PROJECTION)
-    glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 30)
-    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+    glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 3000)
+
+    #glMatrixMode(GL_MODELVIEW)
+
 
     light_ambient = (0.0, 0.0, 0.0, 1.0)
     light_diffuse = (1.0, 1.0, 1.0, 1.0)
