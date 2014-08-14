@@ -29,6 +29,18 @@ for x in range(n):
             doms.append(dom)
 
 
+def resize(width, height):
+    if height == 0:
+        height = 1
+
+    glViewport(0, 0, width, height)
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    gluPerspective(45.0, float(width)/float(height), 0.1, 10000.0)
+    glMatrixMode(GL_MODELVIEW)
+
+
+
 def draw():
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
@@ -44,6 +56,24 @@ def draw():
     #    detector_line.draw(1)
     for dom in doms:
         dom.draw()
+
+
+    
+    glDisable(GL_DEPTH_TEST)
+    glLoadIdentity();
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0.0, 800, 600, 0.0, 0.0, 1.0);
+    glMatrixMode(GL_MODELVIEW);
+    # 2D Stuff here
+    glBegin(GL_QUADS)
+    glVertex2f(0, 0)
+    glVertex2f(800, 0)
+    glVertex2f(800, 50)
+    glVertex2f(0, 50)
+    glEnd()
+    glPopMatrix();
+
 
     glutSwapBuffers()
 
@@ -105,6 +135,7 @@ if __name__ == "__main__":
     glutCreateWindow(wintitle)
     glutDisplayFunc(draw)
     glutIdleFunc(draw)
+    glutReshapeFunc(resize)
     glutKeyboardFunc(process_keyboard)
     glutSpecialFunc(process_special_keys)
     glutMouseFunc(mouse)
