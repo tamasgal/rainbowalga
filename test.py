@@ -4,6 +4,8 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
 
+from PIL import Image
+
 from rainbowalga.core import Position
 from rainbowalga.hardware import (Detector, DetectorLine, DOM) 
 from rainbowalga.tools import (CoordinateSystem, Camera)
@@ -12,6 +14,11 @@ from rainbowalga.tools import (CoordinateSystem, Camera)
 camera = Camera(distance=10)
 coordinate_system = CoordinateSystem()
 detector = Detector()
+logo = Image.open('km3net_logo.bmp')
+
+# Create a raw string from the image data - data will be unsigned bytes
+# RGBpad, no stride (0), and first line is top of image (-1)
+logo_bytes = logo.tobytes("raw", "RGB", 0, -1)
 
 detector_lines = []
 for x in range(20):
@@ -60,6 +67,7 @@ def draw():
 
 
     # 2D stuff
+    menubar_height = logo.size[1] 
     width = glutGet(GLUT_WINDOW_WIDTH)
     height = glutGet(GLUT_WINDOW_HEIGHT)
     glMatrixMode(GL_PROJECTION)
@@ -73,12 +81,18 @@ def draw():
     glClear(GL_DEPTH_BUFFER_BIT)
 
     glBegin(GL_QUADS)
-    glColor3f(1.0, 0.0, 0.0)
+    glColor3f(0.14, 0.49, 0.87)
     glVertex2f(0, 0)
-    glVertex2f(50, 0)
-    glVertex2f(50, 50)
-    glVertex2f(0, 50)
-    glEnd();
+    glVertex2f(width-logo.size[0], 0)
+    glVertex2f(width-logo.size[0], menubar_height)
+    glVertex2f(0, menubar_height)
+    glEnd()
+
+    glPushMatrix()
+    glLoadIdentity()
+    glRasterPos(width-logo.size[0], logo.size[1])
+    glDrawPixels(logo.size[0], logo.size[1], GL_RGB, GL_UNSIGNED_BYTE, logo_bytes)
+    glPopMatrix()
 
     glMatrixMode(GL_PROJECTION)
     glPopMatrix()
