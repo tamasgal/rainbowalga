@@ -42,6 +42,7 @@ def resize(width, height):
 
 
 def draw():
+    # 3D stuff
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
     camera.rotate_y(0.5)
@@ -58,21 +59,30 @@ def draw():
         dom.draw()
 
 
-    
-    glDisable(GL_DEPTH_TEST)
-    glLoadIdentity();
-    glPushMatrix();
-    glLoadIdentity();
-    glOrtho(0.0, 800, 600, 0.0, 0.0, 1.0);
-    glMatrixMode(GL_MODELVIEW);
-    # 2D Stuff here
+    # 2D stuff
+    width = glutGet(GLUT_WINDOW_WIDTH)
+    height = glutGet(GLUT_WINDOW_HEIGHT)
+    glMatrixMode(GL_PROJECTION)
+    glPushMatrix()
+    glLoadIdentity()
+    glOrtho(0.0, width, height, 0.0, -1.0, 10.0)
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+    glDisable(GL_CULL_FACE)
+
+    glClear(GL_DEPTH_BUFFER_BIT)
+
     glBegin(GL_QUADS)
+    glColor3f(1.0, 0.0, 0.0)
     glVertex2f(0, 0)
-    glVertex2f(800, 0)
-    glVertex2f(800, 50)
+    glVertex2f(50, 0)
+    glVertex2f(50, 50)
     glVertex2f(0, 50)
-    glEnd()
-    glPopMatrix();
+    glEnd();
+
+    glMatrixMode(GL_PROJECTION)
+    glPopMatrix()
+    glMatrixMode(GL_MODELVIEW)
 
 
     glutSwapBuffers()
