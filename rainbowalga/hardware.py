@@ -79,7 +79,7 @@ class DOM(object):
         glColor3f(color_r, color_g, color_b)
         glEnable(GL_COLOR_MATERIAL)
         glColorMaterial(GL_FRONT, GL_DIFFUSE)
-        glDisable(GL_TEXTURE_2D)
+        #glDisable(GL_TEXTURE_2D)
         glutSolidSphere(self.radius, 64, 64)
         glDisable(GL_COLOR_MATERIAL)
 
