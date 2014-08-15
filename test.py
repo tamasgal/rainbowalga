@@ -8,9 +8,9 @@ from PIL import Image
 
 from rainbowalga.core import Position
 from rainbowalga.hardware import (Detector, DetectorLine, DOM) 
-from rainbowalga.tools import (CoordinateSystem, Camera)
+from rainbowalga.tools import (CoordinateSystem, Camera, Clock)
 
-
+clock = Clock()
 camera = Camera(distance=10)
 coordinate_system = CoordinateSystem()
 detector = Detector()
@@ -49,10 +49,15 @@ def resize(width, height):
 
 
 def draw():
+    clock.record_frame_time()
+    if not clock.snoozed:
+        glutSetWindowTitle("FPS: {0:.1f}".format(clock.fps));
+        clock.snooze()
+
     # 3D stuff
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
-    camera.rotate_y(0.5)
+    camera.rotate_z(0.5)
     camera.look()
 
     coordinate_system.draw()

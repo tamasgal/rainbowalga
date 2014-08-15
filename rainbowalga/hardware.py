@@ -21,12 +21,12 @@ class Detector(object):
         glShadeModel(GL_FLAT)
         for position in self.line_positions:
             glPushMatrix()
-            glTranslated(position[0], 0, position[1])
+            glTranslated(position[0], position[1], 0)
             glLineWidth(line_width)
             glColor3f(1.0, 1.0, 1.0)
             glBegin(GL_LINES)
-            glVertex3f(0.0, self.z_min, 0.0)
-            glVertex3f(0.0, self.z_max, 0.0)
+            glVertex3f(0.0, 0.0, self.z_min)
+            glVertex3f(0.0, 0.0, self.z_max)
             glEnd()
             glPopMatrix()
 
@@ -36,7 +36,7 @@ class Detector(object):
         glColor3f(1.0, 1.0, 1.0)
         glBegin(GL_POINTS)
         for position in self.dom_positions:
-            glVertex3f(position[0], position[2], position[1])
+            glVertex3f(position[0], position[1], position[2])
         glEnd()
         glPopMatrix()
 
@@ -58,7 +58,7 @@ class DetectorLine(object):
         glColor3f(1.0, 1.0, 1.0)
         glBegin(GL_LINES)
         glVertex3f(0.0, 0.0, 0.0)
-        glVertex3f(0.0, self.length, 0.0)
+        glVertex3f(0.0, 0.0, self.length)
         glEnd()
         glPopMatrix()
 

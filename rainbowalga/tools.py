@@ -1,3 +1,6 @@
+from __future__ import division
+import time
+
 import numpy as np
 
 from OpenGL.GLUT import *
@@ -7,10 +10,63 @@ from OpenGL.GL import *
 from .core import Position
 
 
+class Clock(object):
+    """This class controls the time of the whole simulation.
+    
+    :param float speed: Scale factor for simulation times
+    :param float snooze_interval: Seconds to be snoozed
+
+    """
+    def __init__(self, speed=1, snooze_interval=1):
+        self.speed = speed
+        self.snooze_interval = snooze_interval
+        self.reset()
+
+    @property
+    def time(self):
+        """Return the elapsed time since offset."""
+        return (self.unix_time() - self.offset) * self.speed
+
+    def reset(self):
+        """Set the offset to now."""
+        now = self.unix_time()
+        self.offset = now
+        self.snooze_time = now
+        self.frame_times = []
+
+    def unix_time(self):
+        """Return seconds since epoch."""
+        return time.time()
+
+    def record_frame_time(self):
+        """Save the frame time for FPS calculations (keep only the last 10)."""
+        if len(self.frame_times) > 10:
+            del(self.frame_times[0])
+        self.frame_times.append(self.unix_time())
+
+    def snooze(self):
+        """Set the snooze time to now"""
+        self.snooze_time = self.unix_time()
+
+    @property
+    def snoozed(self):
+        """Check if still snoozed"""
+        return self.unix_time() - self.snooze_time < self.snooze_interval
+
+    @property
+    def fps(self):
+        """Frames per second calculated from recorded frame times"""
+        try:
+            times = self.frame_times
+            return len(times) / (times[-1] - times[0])
+        except (ZeroDivisionError, IndexError):
+            return 0
+
+
 class Camera(object):
     def __init__(self, distance=1):
         self.target = Position(0, 0, 0)
-        self.up = Position(0, 1, 0)
+        self.up = Position(0, 0, 1)
         self._pos = np.array((1, 1, 1))
         self.distance = distance
         
@@ -25,6 +81,14 @@ class Camera(object):
         rotation_matrix = np.matrix([[np.cos(theta), 0, np.sin(theta)],
                                      [0, 1, 0],
                                      [-np.sin(theta),  -0, np.cos(theta)]])
+        new_position = rotation_matrix.dot(self._pos)
+        self._pos = np.array((new_position[0, 0], new_position[0, 1], new_position[0, 2]))
+
+    def rotate_z(self, angle):
+        theta = angle * np.pi / 180
+        rotation_matrix = np.matrix([[np.cos(theta), -np.sin(theta), 0],
+                                     [np.sin(theta),  np.cos(theta), 0],
+                                     [0, 0, 1]])
         new_position = rotation_matrix.dot(self._pos)
         self._pos = np.array((new_position[0, 0], new_position[0, 1], new_position[0, 2]))
 
