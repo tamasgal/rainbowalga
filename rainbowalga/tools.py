@@ -64,9 +64,10 @@ class Clock(object):
 
 
 class Camera(object):
-    def __init__(self, distance=1):
+    """The camera. Desperately needs refactoring."""
+    def __init__(self, distance=1, up=Position(0, 0, 1)):
         self.target = Position(0, 0, 0)
-        self.up = Position(0, 0, 1)
+        self.up = up
         self._pos = np.array((1, 1, 1))
         self.distance = distance
         
