@@ -25,14 +25,29 @@ class Clock(object):
     @property
     def time(self):
         """Return the elapsed time since offset."""
-        return (self.unix_time() - self.offset) * self.speed
+        if self.is_paused:
+            current_time = self.paused_at
+        else:
+            current_time = self.unix_time()
+        return (current_time - self.offset) * self.speed
 
     def reset(self):
         """Set the offset to now."""
         now = self.unix_time()
+        self.is_paused = False
         self.offset = now
         self.snooze_time = now
         self.frame_times = []
+
+    def pause(self):
+        self.is_paused = True
+        self.paused_at = self.unix_time()
+
+    def resume(self):
+        self.is_paused = False
+        now = self.unix_time()
+        paused_time = now - self.paused_at
+        self.offset += paused_time
 
     def unix_time(self):
         """Return seconds since epoch."""
@@ -142,21 +157,44 @@ class CoordinateSystem(object):
         glPopMatrix()
         glPopMatrix()
 
-def draw_text(text, x, y):
-        width = glutGet(GLUT_WINDOW_WIDTH)
-        height = glutGet(GLUT_WINDOW_HEIGHT)
+def draw_text_2d(text, x, y, line_height=17):
+    """Draw a text at a given 2D position.
+    
+    A very basic 2D drawing function for drawing (multi-line) text."
+    """
+    width = glutGet(GLUT_WINDOW_WIDTH)
+    height = glutGet(GLUT_WINDOW_HEIGHT)
 
-        glMatrixMode(GL_PROJECTION)
-        glPushMatrix() #matrix = glGetDouble( GL_PROJECTION_MATRIX )
-        glLoadIdentity()
-        glOrtho(0.0, height, 0.0, width, -1.0, 1.0)
-        glMatrixMode(GL_MODELVIEW)
-        glPushMatrix()
-        glLoadIdentity()
-        glRasterPos2i(x, y)
-        for character in text:
-            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(character))
-        glPopMatrix()
-        glMatrixMode(GL_PROJECTION)
-        glPopMatrix() #glLoadMatrixd(matrix)
-        glMatrixMode(GL_MODELVIEW)
+    glMatrixMode(GL_PROJECTION)
+    glPushMatrix() #matrix = glGetDouble( GL_PROJECTION_MATRIX )
+    glLoadIdentity()
+    glOrtho(0.0, height, 0.0, width, -1.0, 1.0)
+    glMatrixMode(GL_MODELVIEW)
+    glPushMatrix()
+    glLoadIdentity()
+    glRasterPos2i(x, y)
+    lines = 0
+    for character in text:
+        if character == '\n':
+            lines += 1
+            glRasterPos(x, y - (lines * line_height))
+        else:
+            glutBitmapCharacter(GLUT_BITMAP_8_BY_13, ord(character))
+    glPopMatrix()
+    glMatrixMode(GL_PROJECTION)
+    glPopMatrix() #glLoadMatrixd(matrix)
+    glMatrixMode(GL_MODELVIEW)
+
+def draw_text_3d(text, x, y, z):
+    """Draw a text at a given 3D position.
+    
+    A very basic 3D drawing function for displaying text in a 3D scene.
+    The multi-line support is experimental.
+    """
+    glRasterPos(x, y, z)
+    for character in text:
+        if character == '\n':
+            glRasterPos(x, y, z-15)
+        else:
+            glutBitmapCharacter(GLUT_BITMAP_8_BY_13, ord(character))
+

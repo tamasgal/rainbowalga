@@ -9,7 +9,7 @@ from OpenGL.GL.shaders import *
 
 import numpy as np
 
-from rainbowalga.tools import Clock, Camera, draw_text
+from rainbowalga.tools import Clock, Camera, draw_text_2d, draw_text_3d
 from rainbowalga.core import Position
 
 camera = Camera(distance=10, up=Position(0, 0, 1))
@@ -38,7 +38,7 @@ class TestContext(object):
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
         print("OpenGL Version: {0}".format(glGetString(GL_VERSION)))
-        self.clock = Clock()
+        self.clock = Clock(speed=100)
 
         VERTEX_SHADER = compileShader("""
         void main() {
@@ -86,6 +86,7 @@ class TestContext(object):
         print len(self.dom_positions)
 
 
+        self.clock.reset()
         glutMainLoop()
         
     def render(self):
@@ -115,10 +116,10 @@ class TestContext(object):
             glUseProgram(0)
 
 
-        draw_text("FPS: {0:.1f}".format(self.clock.fps), 5, 5)
+        draw_text_2d("FPS:  {0:.1f}\nTime: {1:.0f} ns"
+                     .format(self.clock.fps, self.clock.time),
+                     5, 50)
 
-        #glRasterPos(10, 100, 0)
-        #glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord('S'), 10, 100, 0)
 
         glutSwapBuffers()
 
@@ -137,8 +138,10 @@ class TestContext(object):
         if button == 0:
             if state == 0:
                 camera.is_rotating = False
+                self.clock.pause()
             else:
                 camera.is_rotating = True
+                self.clock.resume()
 
         if button == 3:
             camera.distance = camera.distance + 1
