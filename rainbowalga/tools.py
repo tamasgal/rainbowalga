@@ -168,7 +168,7 @@ def draw_text_2d(text, x, y, line_height=17):
     glMatrixMode(GL_PROJECTION)
     glPushMatrix() #matrix = glGetDouble( GL_PROJECTION_MATRIX )
     glLoadIdentity()
-    glOrtho(0.0, height, 0.0, width, -1.0, 1.0)
+    glOrtho(0.0, width, 0.0, height, -1.0, 1.0)
     glMatrixMode(GL_MODELVIEW)
     glPushMatrix()
     glLoadIdentity()

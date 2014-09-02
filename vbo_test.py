@@ -29,6 +29,7 @@ class TestContext(object):
         
         glutMouseFunc(self.mouse)
         glutMotionFunc(self.drag)
+        glutKeyboardFunc(self.keyboard)
         
         glClearDepth(1.0)
         glClearColor(0.0, 0.0, 0.0, 0.0)
@@ -148,6 +149,13 @@ class TestContext(object):
         if button == 4:
             camera.distance = camera.distance - 1
             
+
+    def keyboard(self, key,  x,  y):
+        if(key == "r"):
+            self.clock.reset()
+        if(key == chr(27)):
+            raise SystemExit
+
     def drag(self, x, y):
         print("Moving: {0} {1}".format(x, y))
 
