@@ -142,3 +142,21 @@ class CoordinateSystem(object):
         glPopMatrix()
         glPopMatrix()
 
+def draw_text(text, x, y):
+        width = glutGet(GLUT_WINDOW_WIDTH)
+        height = glutGet(GLUT_WINDOW_HEIGHT)
+
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix() #matrix = glGetDouble( GL_PROJECTION_MATRIX )
+        glLoadIdentity()
+        glOrtho(0.0, height, 0.0, width, -1.0, 1.0)
+        glMatrixMode(GL_MODELVIEW)
+        glPushMatrix()
+        glLoadIdentity()
+        glRasterPos2i(x, y)
+        for character in text:
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(character))
+        glPopMatrix()
+        glMatrixMode(GL_PROJECTION)
+        glPopMatrix() #glLoadMatrixd(matrix)
+        glMatrixMode(GL_MODELVIEW)

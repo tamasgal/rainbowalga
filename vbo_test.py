@@ -9,7 +9,7 @@ from OpenGL.GL.shaders import *
 
 import numpy as np
 
-from rainbowalga.tools import Clock, Camera
+from rainbowalga.tools import Clock, Camera, draw_text
 from rainbowalga.core import Position
 
 camera = Camera(distance=10, up=Position(0, 0, 1))
@@ -104,7 +104,7 @@ class TestContext(object):
             self.dom_positions_vbo.bind()
             try:
                 glEnableClientState(GL_VERTEX_ARRAY)
-                glVertexPointerf(self.coordsys)
+                glVertexPointerf(self.dom_positions_vbo)
                 #glDrawArrays(GL_TRIANGLES, 0, 12)
                 glPointSize(2)
                 glDrawArrays(GL_POINTS, 0, len(self.dom_positions)*3)
@@ -113,6 +113,12 @@ class TestContext(object):
                 glDisableClientState(GL_VERTEX_ARRAY)
         finally:
             glUseProgram(0)
+
+
+        draw_text("FPS: {0:.1f}".format(self.clock.fps), 5, 5)
+
+        #glRasterPos(10, 100, 0)
+        #glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord('S'), 10, 100, 0)
 
         glutSwapBuffers()
 
