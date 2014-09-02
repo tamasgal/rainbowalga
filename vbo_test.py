@@ -13,6 +13,7 @@ from rainbowalga.tools import Clock, Camera
 from rainbowalga.core import Position
 
 camera = Camera(distance=10, up=Position(0, 0, 1))
+camera.is_rotating = True
 camera._pos = np.array((1, 1, 1))
 
 class TestContext(object):
@@ -22,9 +23,13 @@ class TestContext(object):
         glutInitWindowSize(800, 600)
         glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE)
         glutCreateWindow("narf")
-        glutDisplayFunc(self.Render)
-        glutIdleFunc(self.Render)
+        glutDisplayFunc(self.render)
+        glutIdleFunc(self.render)
+        glutReshapeFunc(self.resize)
+        
         glutMouseFunc(self.mouse)
+        glutMotionFunc(self.drag)
+        
         glClearDepth(1.0)
         glClearColor(0.0, 0.0, 0.0, 0.0)
         glMatrixMode(GL_PROJECTION)
@@ -32,6 +37,7 @@ class TestContext(object):
         glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 3000)
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
+        print("OpenGL Version: {0}".format(glGetString(GL_VERSION)))
         self.clock = Clock()
 
         VERTEX_SHADER = compileShader("""
@@ -82,7 +88,7 @@ class TestContext(object):
 
         glutMainLoop()
         
-    def Render(self):
+    def render(self):
         self.clock.record_frame_time()
         if not self.clock.snoozed:
             glutSetWindowTitle("FPS: {0:.1f}".format(self.clock.fps));
@@ -90,7 +96,7 @@ class TestContext(object):
 
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-        camera.rotate_z(1)
+        camera.rotate_z(0.2)
         camera.look()
 
         glUseProgram(self.shader)
@@ -110,12 +116,32 @@ class TestContext(object):
 
         glutSwapBuffers()
 
+    def resize(self, width, height):
+        if height == 0:
+            height = 1
+
+        glViewport(0, 0, width, height)
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        gluPerspective(45.0, float(width)/float(height), 0.1, 10000.0)
+        glMatrixMode(GL_MODELVIEW)
+
+
     def mouse(self, button, state, x, y):
+        if button == 0:
+            if state == 0:
+                camera.is_rotating = False
+            else:
+                camera.is_rotating = True
+
         if button == 3:
             camera.distance = camera.distance + 1
         if button == 4:
             camera.distance = camera.distance - 1
             
+    def drag(self, x, y):
+        print("Moving: {0} {1}".format(x, y))
+
             
 if __name__ == "__main__":
     tc = TestContext()

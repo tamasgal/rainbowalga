@@ -12,6 +12,7 @@ from rainbowalga.tools import (CoordinateSystem, Camera, Clock)
 
 clock = Clock()
 camera = Camera(distance=10)
+camera.is_rotating = True
 coordinate_system = CoordinateSystem()
 detector = Detector()
 logo = Image.open('km3net_logo.bmp')
@@ -106,6 +107,8 @@ def draw():
 
     glutSwapBuffers()
 
+def drag(x, y):
+    print("Moving: {0} {1}".format(x, y))
 
 def process_keyboard(key,  x,  y):
     if(key == chr(27)):
@@ -118,7 +121,12 @@ def process_special_keys(key, x, z):
         camera.rotate(0.1)
 
 def mouse(button, state, x, y):
-    #print button, state, x, y
+    print button, state, x, y
+    if button == 0:
+        if state == 0:
+            camera.is_rotating = False
+        else:
+            camera.is_rotating = True
     if button == 3:
         camera.distance = camera.distance + 1
     if button == 4:
@@ -145,9 +153,8 @@ def dmenu(item):
     return 0
 
 if __name__ == "__main__":
-    global quadratic
-    quadratic = gluNewQuadric()
-    gluQuadricNormals(quadratic, GLU_SMOOTH)
+    width = 800
+    height = 600
 
     glutInit()
 
@@ -157,7 +164,7 @@ if __name__ == "__main__":
     #print 'Renderer: %s' % (glGetString(GL_RENDERER))
 
     glutInitWindowPosition(112, 84)
-    glutInitWindowSize(800, 600)
+    glutInitWindowSize(width, height)
     # use multisampling if available 
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE)
     wintitle = "RainbowAlga"
@@ -168,6 +175,7 @@ if __name__ == "__main__":
     glutKeyboardFunc(process_keyboard)
     glutSpecialFunc(process_special_keys)
     glutMouseFunc(mouse)
+    glutMotionFunc(drag)
     
     glutCreateMenu(dmenu)
     glutAddMenuEntry("Debug", RESET)
@@ -177,7 +185,7 @@ if __name__ == "__main__":
     # setup OpenGL state 
     glClearDepth(1.0)
     glClearColor(0.0, 0.0, 0.0, 0.0)
-    #glViewport(0, 0, 800, 600)
+    glViewport(0, 0, width, height)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 3000)
