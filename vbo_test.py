@@ -143,7 +143,7 @@ class TestContext(object):
         
     def render(self):
         self.clock.record_frame_time()
-        if not self.clock.snoozed:
+        if not self.clock.is_snoozed:
             glutSetWindowTitle("FPS: {0:.1f}".format(self.clock.fps));
             self.clock.snooze()
 
@@ -207,6 +207,7 @@ class TestContext(object):
         draw_text_2d("FPS:  {0:.1f}\nTime: {1:.0f} ns"
                      .format(self.clock.fps, self.clock.time),
                      10, 30)
+
 
         glutSwapBuffers()
 

@@ -64,7 +64,7 @@ class Clock(object):
         self.snooze_time = self.unix_time()
 
     @property
-    def snoozed(self):
+    def is_snoozed(self):
         """Check if still snoozed"""
         return self.unix_time() - self.snooze_time < self.snooze_interval
 
@@ -73,7 +73,7 @@ class Clock(object):
         """Frames per second calculated from recorded frame times"""
         try:
             times = self.frame_times
-            return len(times) / (times[-1] - times[0])
+            return (len(times) - 1) / (times[-1] - times[0])
         except (ZeroDivisionError, IndexError):
             return 0
 
