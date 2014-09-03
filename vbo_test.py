@@ -33,7 +33,7 @@ class Particle(object):
         self.dz = dz
         self.speed = speed
 
-    def draw(self, time, line_width=3, color=(1.0, 0.0, 0.0)):
+    def draw(self, time, line_width=3, color=(1.0, 0.0, 0.6)):
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_LINE_SMOOTH)
         glShadeModel(GL_FLAT)
@@ -47,6 +47,10 @@ class Particle(object):
                    self.z + time * self.dz)
         glEnd()
         glPopMatrix()
+
+
+
+
 
 class TestContext(object):
     def __init__(self):   
@@ -131,6 +135,9 @@ class TestContext(object):
 
         self.objects = [particle, particle2]
 
+        self.mouse_x = None
+        self.mouse_y = None
+
         self.clock.reset()
         glutMainLoop()
         
@@ -142,7 +149,8 @@ class TestContext(object):
 
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-        camera.rotate_z(0.2)
+        if camera.is_rotating:
+            camera.rotate_z(0.2)
         camera.look()
 
         glUseProgram(self.shader)
@@ -162,7 +170,6 @@ class TestContext(object):
 
         for obj in self.objects:
             obj.draw(self.clock.time)
-
 
 
         # 2D stuff
@@ -197,12 +204,9 @@ class TestContext(object):
         glPopMatrix()
         glMatrixMode(GL_MODELVIEW)
 
-
-
         draw_text_2d("FPS:  {0:.1f}\nTime: {1:.0f} ns"
                      .format(self.clock.fps, self.clock.time),
-                     5, 50)
-
+                     10, 30)
 
         glutSwapBuffers()
 
@@ -220,17 +224,17 @@ class TestContext(object):
     def mouse(self, button, state, x, y):
         if button == GLUT_LEFT_BUTTON:
             if state == GLUT_DOWN:
+                self.mouse_x = x
+                self.mouse_y = y
                 camera.is_rotating = False
             else:
                 camera.is_rotating = True
 
         if button == 3:
             camera.distance = camera.distance + 1
-            print camera.distance
         if button == 4:
             camera.distance = camera.distance - 1
             
-
     def keyboard(self, key,  x,  y):
         print("Key pressed: '{0}'".format(key))
         if(key == "r"):
@@ -249,7 +253,10 @@ class TestContext(object):
             print("Left key pressed")
 
     def drag(self, x, y):
-        print("Moving: {0} {1}".format(x, y))
+        camera.rotate_z(self.mouse_x - x)
+        camera.move_z(-(self.mouse_y - y)*5)
+        self.mouse_x = x
+        self.mouse_y = y
 
             
 if __name__ == "__main__":

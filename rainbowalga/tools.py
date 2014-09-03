@@ -94,8 +94,6 @@ class Camera(object):
         return Position(current_position[0], current_position[1], current_position[2])
 
     def rotate_y(self, angle):
-        if not self.is_rotating:
-            return
         theta = angle * np.pi / 180
         rotation_matrix = np.matrix([[np.cos(theta), 0, np.sin(theta)],
                                      [0, 1, 0],
@@ -104,14 +102,16 @@ class Camera(object):
         self._pos = np.array((new_position[0, 0], new_position[0, 1], new_position[0, 2]))
 
     def rotate_z(self, angle):
-        if not self.is_rotating:
-            return
         theta = angle * np.pi / 180
         rotation_matrix = np.matrix([[np.cos(theta), -np.sin(theta), 0],
                                      [np.sin(theta),  np.cos(theta), 0],
                                      [0, 0, 1]])
         new_position = rotation_matrix.dot(self._pos)
         self._pos = np.array((new_position[0, 0], new_position[0, 1], new_position[0, 2]))
+
+    def move_z(self, distance):
+        position = self.pos
+        self._pos = np.array((position.x, position.y, position.z + distance))
 
     def look(self):
         glMatrixMode(GL_MODELVIEW)
