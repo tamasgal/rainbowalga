@@ -9,12 +9,19 @@ from OpenGL.GL.shaders import *
 
 import numpy as np
 
+from PIL import Image
+
 from rainbowalga.tools import Clock, Camera, draw_text_2d, draw_text_3d
 from rainbowalga.core import Position
 
 camera = Camera()
 camera.is_rotating = True
 camera._pos = np.array((1, 1, 1))
+
+logo = Image.open('km3net_logo.bmp')
+# Create a raw string from the image data - data will be unsigned bytes
+# RGBpad, no stride (0), and first line is top of image (-1)
+logo_bytes = logo.tobytes("raw", "RGB", 0, -1)
 
 class Particle(object):
     def __init__(self, x, y, z, dx, dy, dz, speed):
@@ -155,6 +162,42 @@ class TestContext(object):
 
         for obj in self.objects:
             obj.draw(self.clock.time)
+
+
+
+        # 2D stuff
+        menubar_height = logo.size[1] 
+        width = glutGet(GLUT_WINDOW_WIDTH)
+        height = glutGet(GLUT_WINDOW_HEIGHT)
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        glLoadIdentity()
+        glOrtho(0.0, width, height, 0.0, -1.0, 10.0)
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+        glDisable(GL_CULL_FACE)
+
+        glClear(GL_DEPTH_BUFFER_BIT)
+
+        glBegin(GL_QUADS)
+        glColor3f(0.14, 0.49, 0.87)
+        glVertex2f(0, 0)
+        glVertex2f(width-logo.size[0], 0)
+        glVertex2f(width-logo.size[0], menubar_height)
+        glVertex2f(0, menubar_height)
+        glEnd()
+
+        glPushMatrix()
+        glLoadIdentity()
+        glRasterPos(width-logo.size[0], logo.size[1])
+        glDrawPixels(logo.size[0], logo.size[1], GL_RGB, GL_UNSIGNED_BYTE, logo_bytes)
+        glPopMatrix()
+
+        glMatrixMode(GL_PROJECTION)
+        glPopMatrix()
+        glMatrixMode(GL_MODELVIEW)
+
+
 
         draw_text_2d("FPS:  {0:.1f}\nTime: {1:.0f} ns"
                      .format(self.clock.fps, self.clock.time),
