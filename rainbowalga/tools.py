@@ -80,7 +80,7 @@ class Clock(object):
 
 class Camera(object):
     """The camera. Desperately needs refactoring."""
-    def __init__(self, distance=1, up=Position(0, 0, 1)):
+    def __init__(self, distance=1500, up=Position(0, 0, 1)):
         self.target = Position(0, 0, 0)
         self.up = up
         self._pos = np.array((1, 1, 1))
@@ -157,7 +157,7 @@ class CoordinateSystem(object):
         glPopMatrix()
         glPopMatrix()
 
-def draw_text_2d(text, x, y, line_height=17):
+def draw_text_2d(text, x, y, line_height=17, color=(1.0, 1.0, 1.0)):
     """Draw a text at a given 2D position.
     
     A very basic 2D drawing function for drawing (multi-line) text."
@@ -172,6 +172,7 @@ def draw_text_2d(text, x, y, line_height=17):
     glMatrixMode(GL_MODELVIEW)
     glPushMatrix()
     glLoadIdentity()
+    glColor3f(*color)    
     glRasterPos2i(x, y)
     lines = 0
     for character in text:
@@ -185,12 +186,13 @@ def draw_text_2d(text, x, y, line_height=17):
     glPopMatrix() #glLoadMatrixd(matrix)
     glMatrixMode(GL_MODELVIEW)
 
-def draw_text_3d(text, x, y, z):
+def draw_text_3d(text, x, y, z, color=(1.0, 1.0, 1.0)):
     """Draw a text at a given 3D position.
     
     A very basic 3D drawing function for displaying text in a 3D scene.
     The multi-line support is experimental.
     """
+    glColor3f(*color)    
     glRasterPos(x, y, z)
     for character in text:
         if character == '\n':

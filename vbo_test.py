@@ -12,9 +12,34 @@ import numpy as np
 from rainbowalga.tools import Clock, Camera, draw_text_2d, draw_text_3d
 from rainbowalga.core import Position
 
-camera = Camera(distance=10, up=Position(0, 0, 1))
+camera = Camera()
 camera.is_rotating = True
 camera._pos = np.array((1, 1, 1))
+
+class Particle(object):
+    def __init__(self, x, y, z, dx, dy, dz, speed):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.dx = dx
+        self.dy = dy
+        self.dz = dz
+        self.speed = speed
+
+    def draw(self, time, line_width=3, color=(1.0, 0.0, 0.0)):
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_LINE_SMOOTH)
+        glShadeModel(GL_FLAT)
+        glPushMatrix()
+        glLineWidth(line_width)
+        glColor3f(*color)
+        glBegin(GL_LINES)
+        glVertex3f(self.x, self.y, self.z)
+        glVertex3f(self.x + time * self.dx,
+                   self.y + time * self.dy,
+                   self.z + time * self.dz)
+        glEnd()
+        glPopMatrix()
 
 class TestContext(object):
     def __init__(self):   
@@ -30,6 +55,7 @@ class TestContext(object):
         glutMouseFunc(self.mouse)
         glutMotionFunc(self.drag)
         glutKeyboardFunc(self.keyboard)
+        glutSpecialFunc(self.special_keyboard)
         
         glClearDepth(1.0)
         glClearColor(0.0, 0.0, 0.0, 0.0)
@@ -47,7 +73,7 @@ class TestContext(object):
         }""", GL_VERTEX_SHADER)
         FRAGMENT_SHADER = compileShader("""
         void main() {
-            gl_FragColor = vec4(0, 1, 0, 1);
+            gl_FragColor = vec4(0.8, 0.8, 0.8, 1);
         }""", GL_FRAGMENT_SHADER)
         
         self.shader = compileProgram(VERTEX_SHADER, FRAGMENT_SHADER)
@@ -82,10 +108,21 @@ class TestContext(object):
         omkeys = pickle.load(open('geometry_dump.pickle', 'r'))
         doms = [pmt for pmt in omkeys.items() if pmt[0][2] == 0]
         self.dom_positions = np.array([pos for omkey, (pos, dir) in doms], 'f')
-        self.dom_positions_vbo = vbo.VBO(self.dom_positions)
-        print self.dom_positions
-        print len(self.dom_positions)
+        self.min_z = min([z for x, y, z in self.dom_positions])
+        self.max_z = max([z for x, y, z in self.dom_positions])
+        #self.line_positions_lower = [pos for omkey, (pos, dir) in doms
+        #                             if omkey[1] == 1 and omkey[2] == 0]
+        #self.line_positions_upper = [(x, y, self.max_z) for x, y, z in self.line_positions_lower]
+        #self.line_positions = zip(self.line_positions_lower, self.line_positions_upper)
 
+        self.dom_positions_vbo = vbo.VBO(self.dom_positions)
+        #self.line_positions_vbo = vbo.VBO(self.line_positions)
+
+
+        particle = Particle(-100, -100, -100, 1, 0, 0, 1)
+        particle2 = Particle(-100, -100, -100, 0.9, 0.3, 0, 1)
+
+        self.objects = [particle, particle2]
 
         self.clock.reset()
         glutMainLoop()
@@ -116,6 +153,8 @@ class TestContext(object):
         finally:
             glUseProgram(0)
 
+        for obj in self.objects:
+            obj.draw(self.clock.time)
 
         draw_text_2d("FPS:  {0:.1f}\nTime: {1:.0f} ns"
                      .format(self.clock.fps, self.clock.time),
@@ -136,25 +175,35 @@ class TestContext(object):
 
 
     def mouse(self, button, state, x, y):
-        if button == 0:
-            if state == 0:
+        if button == GLUT_LEFT_BUTTON:
+            if state == GLUT_DOWN:
                 camera.is_rotating = False
-                self.clock.pause()
             else:
                 camera.is_rotating = True
-                self.clock.resume()
 
         if button == 3:
             camera.distance = camera.distance + 1
+            print camera.distance
         if button == 4:
             camera.distance = camera.distance - 1
             
 
     def keyboard(self, key,  x,  y):
+        print("Key pressed: '{0}'".format(key))
         if(key == "r"):
             self.clock.reset()
+        if(key == " "):
+            if self.clock.is_paused:
+                self.clock.resume()
+            else:
+                self.clock.pause()
         if(key == chr(27)):
             raise SystemExit
+
+    def special_keyboard(self, key, x, z):
+        print("Special key pressed: '{0}'".format(key))
+        if key == GLUT_KEY_LEFT:
+            print("Left key pressed")
 
     def drag(self, x, y):
         print("Moving: {0} {1}".format(x, y))
