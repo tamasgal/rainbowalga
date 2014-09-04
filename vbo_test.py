@@ -13,6 +13,7 @@ from PIL import Image
 
 from rainbowalga.tools import Clock, Camera, draw_text_2d, draw_text_3d
 from rainbowalga.core import Position
+from rainbowalga.physics import Particle
 
 camera = Camera()
 camera.is_rotating = True
@@ -23,30 +24,7 @@ logo = Image.open('km3net_logo.bmp')
 # RGBpad, no stride (0), and first line is top of image (-1)
 logo_bytes = logo.tobytes("raw", "RGB", 0, -1)
 
-class Particle(object):
-    def __init__(self, x, y, z, dx, dy, dz, speed):
-        self.x = x
-        self.y = y
-        self.z = z
-        self.dx = dx
-        self.dy = dy
-        self.dz = dz
-        self.speed = speed
 
-    def draw(self, time, line_width=3, color=(1.0, 0.0, 0.6)):
-        glEnable(GL_DEPTH_TEST)
-        glEnable(GL_LINE_SMOOTH)
-        glShadeModel(GL_FLAT)
-        glPushMatrix()
-        glLineWidth(line_width)
-        glColor3f(*color)
-        glBegin(GL_LINES)
-        glVertex3f(self.x, self.y, self.z)
-        glVertex3f(self.x + time * self.dx,
-                   self.y + time * self.dy,
-                   self.z + time * self.dz)
-        glEnd()
-        glPopMatrix()
 
 
 
@@ -138,6 +116,8 @@ class TestContext(object):
         self.mouse_x = None
         self.mouse_y = None
 
+        self.show_help = False
+
         self.clock.reset()
         glutMainLoop()
         
@@ -207,11 +187,17 @@ class TestContext(object):
         draw_text_2d("FPS:  {0:.1f}\nTime: {1:.0f} ns"
                      .format(self.clock.fps, self.clock.time),
                      10, 30)
-
+        if self.show_help:
+            #draw_text_2d("narf\nnarf\nfoo", 10, 80)
+            self.display_help()
 
         glutSwapBuffers()
 
     def resize(self, width, height):
+        if width < 400:
+            glutReshapeWindow(400, height)
+        if height < 300:
+            glutReshapeWindow(width, 300)
         if height == 0:
             height = 1
 
@@ -232,20 +218,22 @@ class TestContext(object):
                 camera.is_rotating = True
 
         if button == 3:
-            camera.distance = camera.distance + 1
+            camera.distance = camera.distance + 2
         if button == 4:
-            camera.distance = camera.distance - 1
+            camera.distance = camera.distance - 2
             
     def keyboard(self, key,  x,  y):
         print("Key pressed: '{0}'".format(key))
         if(key == "r"):
             self.clock.reset()
+        if(key == "h"):
+            self.show_help = not self.show_help
         if(key == " "):
             if self.clock.is_paused:
                 self.clock.resume()
             else:
                 self.clock.pause()
-        if(key == chr(27)):
+        if(key in ('q', chr(27))):
             raise SystemExit
 
     def special_keyboard(self, key, x, z):
@@ -255,10 +243,26 @@ class TestContext(object):
 
     def drag(self, x, y):
         camera.rotate_z(self.mouse_x - x)
-        camera.move_z(-(self.mouse_y - y)*5)
+        camera.move_z(-(self.mouse_y - y)*8)
         self.mouse_x = x
         self.mouse_y = y
 
+    def help_string(self):
+        options = {
+            'h': 'help',
+            'r': 'reset time',
+            '<space>': 'pause time',
+            '<esc> or q': 'quit'
+            }
+        help_string = "Keyboard commands:\n-------------------\n"
+        for key in sorted(options.keys()):
+            help_string += "{key:>10} : {description}\n" \
+                           .format(key=key, description=options[key])
+        return help_string
+
+    def display_help(self):
+        pos_y = glutGet(GLUT_WINDOW_HEIGHT) - 100
+        draw_text_2d(self.help_string(), 10, pos_y)
             
 if __name__ == "__main__":
     tc = TestContext()
