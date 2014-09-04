@@ -13,7 +13,7 @@ from PIL import Image
 
 from rainbowalga.tools import Clock, Camera, draw_text_2d, draw_text_3d
 from rainbowalga.core import Position
-from rainbowalga.physics import Particle
+from rainbowalga.physics import Particle, Hit
 
 camera = Camera()
 camera.is_rotating = True
@@ -52,6 +52,35 @@ class TestContext(object):
         glLoadIdentity()
         glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 3000)
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
+
+
+        # Lighting
+        light_ambient = (0.0, 0.0, 0.0, 1.0)
+        light_diffuse = (1.0, 1.0, 1.0, 1.0)
+        light_specular = (1.0, 1.0, 1.0, 1.0)
+        light_position = (-100.0, 100.0, 100.0, 0.0)
+
+        mat_ambient = (0.7, 0.7, 0.7, 1.0)
+        mat_diffuse = (0.8, 0.8, 0.8, 1.0)
+        mat_specular = (1.0, 1.0, 1.0, 1.0)
+        high_shininess = (100)
+
+        glEnable(GL_LIGHT0)
+        glEnable(GL_NORMALIZE)
+        glEnable(GL_COLOR_MATERIAL)
+        glEnable(GL_LIGHTING)
+    
+        glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient)
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse)
+        glLightfv(GL_LIGHT0, GL_SPECULAR,  light_specular)
+        glLightfv(GL_LIGHT0, GL_POSITION, light_position)
+
+        glMaterialfv(GL_FRONT, GL_AMBIENT,   mat_ambient)
+        glMaterialfv(GL_FRONT, GL_DIFFUSE,   mat_diffuse)
+        glMaterialfv(GL_FRONT, GL_SPECULAR,  mat_specular)
+        glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess)
+
+
 
         print("OpenGL Version: {0}".format(glGetString(GL_VERSION)))
         self.clock = Clock(speed=100)
@@ -94,6 +123,10 @@ class TestContext(object):
                 ], 'f')
             )
 
+
+        self.objects = []
+        self.shaded_objects = []
+
         omkeys = pickle.load(open('geometry_dump.pickle', 'r'))
         doms = [pmt for pmt in omkeys.items() if pmt[0][2] == 0]
         self.dom_positions = np.array([pos for omkey, (pos, dir) in doms], 'f')
@@ -108,10 +141,27 @@ class TestContext(object):
         #self.line_positions_vbo = vbo.VBO(self.line_positions)
 
 
-        particle = Particle(-100, -100, -100, 1, 0, 0, 1)
-        particle2 = Particle(-100, -100, -100, 0.9, 0.3, 0, 1)
+        muon = pickle.load(open('muon_sample.pickle', 'r'))
+        muon_pos = muon[0]
+        muon_dir = muon[1]
 
-        self.objects = [particle, particle2]
+        particle = Particle(muon_pos[0], muon_pos[1], muon_pos[2],
+                            muon_dir[0], muon_dir[1], muon_dir[2], 1)
+        self.objects.append(particle)
+
+        pmt_hits = pickle.load(open('hits_sample.pickle', 'r'))
+        hits = [((omkey[0], omkey[1], 0), time) for omkey, time in pmt_hits]
+        hits.sort(key=lambda x: x[1])
+        unique_omkeys = []
+        for omkey, hit_time in hits:
+            if len(self.shaded_objects) > 100:
+                break 
+            if not omkey in unique_omkeys:
+                unique_omkeys.append(omkey)
+                x, y, z = omkeys[omkey][0]
+                #selected_hits.append(Hit(x, y, z, hit_time))
+                self.shaded_objects.append(Hit(x, y, z, hit_time-1000))
+
 
         self.mouse_x = None
         self.mouse_y = None
@@ -148,9 +198,18 @@ class TestContext(object):
         finally:
             glUseProgram(0)
 
-        for obj in self.objects:
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_LINE_SMOOTH)
+        glShadeModel(GL_FLAT)
+        glEnable(GL_LIGHTING)
+        
+        for obj in self.shaded_objects:
             obj.draw(self.clock.time)
 
+        glDisable(GL_LIGHTING)
+
+        for obj in self.objects:
+            obj.draw(self.clock.time)
 
         # 2D stuff
         menubar_height = logo.size[1] 
@@ -183,6 +242,8 @@ class TestContext(object):
         glMatrixMode(GL_PROJECTION)
         glPopMatrix()
         glMatrixMode(GL_MODELVIEW)
+
+        glColor3f(1.0, 1.0, 1.0)
 
         draw_text_2d("FPS:  {0:.1f}\nTime: {1:.0f} ns"
                      .format(self.clock.fps, self.clock.time),
