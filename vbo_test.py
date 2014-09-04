@@ -228,6 +228,11 @@ class TestContext(object):
             self.clock.reset()
         if(key == "h"):
             self.show_help = not self.show_help
+        if(key == "+"):
+            camera.distance = camera.distance - 50
+        if(key == "-"):
+            camera.distance = camera.distance + 50
+
         if(key == " "):
             if self.clock.is_paused:
                 self.clock.resume()
@@ -252,7 +257,9 @@ class TestContext(object):
             'h': 'help',
             'r': 'reset time',
             '<space>': 'pause time',
-            '<esc> or q': 'quit'
+            '<esc> or q': 'quit',
+            '+': 'zoom in',
+            '-': 'zoom out'
             }
         help_string = "Keyboard commands:\n-------------------\n"
         for key in sorted(options.keys()):
