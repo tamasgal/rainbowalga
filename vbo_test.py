@@ -26,17 +26,13 @@ logo_bytes = logo.tobytes("raw", "RGB", 0, -1)
 
 
 
-
-
-
-
-class TestContext(object):
+class RainbowAlga(object):
     def __init__(self):   
         glutInit()
         glutInitWindowPosition(112, 84)
         glutInitWindowSize(800, 600)
         glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE)
-        glutCreateWindow("narf")
+        glutCreateWindow("Rainbow Alga")
         glutDisplayFunc(self.render)
         glutIdleFunc(self.render)
         glutReshapeFunc(self.resize)
@@ -167,15 +163,13 @@ class TestContext(object):
         self.mouse_y = None
 
         self.show_help = False
+        self._help_string = None
 
         self.clock.reset()
         glutMainLoop()
         
     def render(self):
         self.clock.record_frame_time()
-        if not self.clock.is_snoozed:
-            glutSetWindowTitle("FPS: {0:.1f}".format(self.clock.fps));
-            self.clock.snooze()
 
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
@@ -212,7 +206,7 @@ class TestContext(object):
             obj.draw(self.clock.time)
 
         # 2D stuff
-        menubar_height = logo.size[1] 
+        menubar_height = logo.size[1] + 4
         width = glutGet(GLUT_WINDOW_WIDTH)
         height = glutGet(GLUT_WINDOW_HEIGHT)
         glMatrixMode(GL_PROJECTION)
@@ -228,14 +222,14 @@ class TestContext(object):
         glBegin(GL_QUADS)
         glColor3f(0.14, 0.49, 0.87)
         glVertex2f(0, 0)
-        glVertex2f(width-logo.size[0], 0)
-        glVertex2f(width-logo.size[0], menubar_height)
+        glVertex2f(width - logo.size[0] - 10, 0)
+        glVertex2f(width - logo.size[0] - 10, menubar_height)
         glVertex2f(0, menubar_height)
         glEnd()
 
         glPushMatrix()
         glLoadIdentity()
-        glRasterPos(width-logo.size[0], logo.size[1])
+        glRasterPos(width - logo.size[0] - 4, logo.size[1] + 2)
         glDrawPixels(logo.size[0], logo.size[1], GL_RGB, GL_UNSIGNED_BYTE, logo_bytes)
         glPopMatrix()
 
@@ -313,24 +307,27 @@ class TestContext(object):
         self.mouse_x = x
         self.mouse_y = y
 
+    @property
     def help_string(self):
-        options = {
-            'h': 'help',
-            'r': 'reset time',
-            '<space>': 'pause time',
-            '<esc> or q': 'quit',
-            '+': 'zoom in',
-            '-': 'zoom out'
-            }
-        help_string = "Keyboard commands:\n-------------------\n"
-        for key in sorted(options.keys()):
-            help_string += "{key:>10} : {description}\n" \
-                           .format(key=key, description=options[key])
-        return help_string
+        if not self._help_string:
+            options = {
+                'h': 'help',
+                'r': 'reset time',
+                '<space>': 'pause time',
+                '<esc> or q': 'quit',
+                '+': 'zoom in',
+                '-': 'zoom out'
+                }
+            help_string = "Keyboard commands:\n-------------------\n"
+            for key in sorted(options.keys()):
+                help_string += "{key:>10} : {description}\n" \
+                               .format(key=key, description=options[key])
+            self._help_string = help_string
+        return self._help_string
 
     def display_help(self):
-        pos_y = glutGet(GLUT_WINDOW_HEIGHT) - 100
-        draw_text_2d(self.help_string(), 10, pos_y)
+        pos_y = glutGet(GLUT_WINDOW_HEIGHT) - 80
+        draw_text_2d(self.help_string, 10, pos_y)
             
 if __name__ == "__main__":
-    tc = TestContext()
+    app = RainbowAlga()
