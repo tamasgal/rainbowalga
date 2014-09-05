@@ -15,6 +15,4 @@ class TestPosition(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    if __package__ is None:
-        __package__ = "test.test_core"
     unittest.main()
