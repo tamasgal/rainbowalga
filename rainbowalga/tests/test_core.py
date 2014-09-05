@@ -1,3 +1,5 @@
+from __future__ import division, absolute_import, print_function
+
 import unittest
 
 from rainbowalga.core import Position
@@ -13,4 +15,6 @@ class TestPosition(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    if __package__ is None:
+        __package__ = "test.test_core"
     unittest.main()

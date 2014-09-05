@@ -1,3 +1,5 @@
+from __future__ import division, absolute_import, print_function
+
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 

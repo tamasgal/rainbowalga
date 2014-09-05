@@ -1,3 +1,5 @@
+from __future__ import division, absolute_import, print_function
+
 import time
 import pickle
 
@@ -17,7 +19,6 @@ from rainbowalga.physics import Particle, Hit
 
 camera = Camera()
 camera.is_rotating = True
-camera._pos = np.array((1, 1, 1))
 
 logo = Image.open('km3net_logo.bmp')
 # Create a raw string from the image data - data will be unsigned bytes
@@ -328,6 +329,7 @@ class RainbowAlga(object):
     def display_help(self):
         pos_y = glutGet(GLUT_WINDOW_HEIGHT) - 80
         draw_text_2d(self.help_string, 10, pos_y)
-            
+
+
 if __name__ == "__main__":
     app = RainbowAlga()
