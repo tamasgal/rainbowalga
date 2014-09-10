@@ -16,6 +16,7 @@ from PIL import Image
 from rainbowalga.tools import Clock, Camera, draw_text_2d, draw_text_3d
 from rainbowalga.core import Position
 from rainbowalga.physics import Particle, Hit
+from rainbowalga import constants
 
 camera = Camera()
 camera.is_rotating = True
@@ -143,7 +144,7 @@ class RainbowAlga(object):
         muon_dir = muon[1]
 
         particle = Particle(muon_pos[0], muon_pos[1], muon_pos[2],
-                            muon_dir[0], muon_dir[1], muon_dir[2], 1)
+                            muon_dir[0], muon_dir[1], muon_dir[2], constants.c)
         self.objects.append(particle)
 
         pmt_hits = pickle.load(open('hits_sample.pickle', 'r'))
@@ -157,7 +158,7 @@ class RainbowAlga(object):
                 unique_omkeys.append(omkey)
                 x, y, z = omkeys[omkey][0]
                 #selected_hits.append(Hit(x, y, z, hit_time))
-                self.shaded_objects.append(Hit(x, y, z, hit_time-1000))
+                self.shaded_objects.append(Hit(x, y, z, hit_time))
 
 
         self.mouse_x = None

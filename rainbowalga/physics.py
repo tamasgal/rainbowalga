@@ -14,14 +14,15 @@ class Particle(object):
         self.speed = speed
 
     def draw(self, time, line_width=3, color=(1.0, 0.0, 0.6)):
+        time = time * 1e-9
         glPushMatrix()
         glLineWidth(line_width)
         glColor3f(*color)
         glBegin(GL_LINES)
         glVertex3f(self.x, self.y, self.z)
-        glVertex3f(self.x + time * self.dx,
-                   self.y + time * self.dy,
-                   self.z + time * self.dz)
+        glVertex3f(self.x + self.speed * time * self.dx,
+                   self.y + self.speed * time * self.dy,
+                   self.z + self.speed * time * self.dz)
         glEnd()
         glPopMatrix()
 
