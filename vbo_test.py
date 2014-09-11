@@ -304,6 +304,16 @@ class RainbowAlga(object):
         if(key == "-"):
             camera.distance = camera.distance + 50
 
+        if(key == "s"):
+            width = glutGet(GLUT_WINDOW_WIDTH)
+            height = glutGet(GLUT_WINDOW_HEIGHT)
+            pixelset = (GLubyte * (3*width*height))(0)
+            glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixelset)
+            image = Image.fromstring(mode="RGB", size=(width, height), data=pixelset)     
+            image = image.transpose(Image.FLIP_TOP_BOTTOM)
+            image.save('screenshot.png')
+            print("Screenshot saved as 'screenshot.png'.")
+
         if(key == " "):
             if self.clock.is_paused:
                 self.clock.resume()
@@ -329,6 +339,7 @@ class RainbowAlga(object):
             options = {
                 'h': 'help',
                 'r': 'reset time',
+                's': 'save screenshot (screenshot.png)',
                 '<space>': 'pause time',
                 '<esc> or q': 'quit',
                 '+': 'zoom in',
