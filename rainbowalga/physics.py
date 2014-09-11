@@ -34,10 +34,11 @@ class Hit(object):
         self.z = z
         self.time = time
 
-    def draw(self, time):
+    def draw(self, time, spectrum):
         if time < self.time:
             return
-        color = (1.0, 1.0-self.time/3000.0, self.time/3000.0)
+        #color = (1.0, 1.0-self.time/2000.0, self.time/2000.0)
+        color = spectrum(self.time)
         glPushMatrix()
         glTranslated(self.x, self.y, self.z)
 

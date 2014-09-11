@@ -151,6 +151,7 @@ class RainbowAlga(object):
         hits = [((omkey[0], omkey[1], 0), time) for omkey, time in pmt_hits]
         hits.sort(key=lambda x: x[1])
         unique_omkeys = []
+        hit_times = []
         for omkey, hit_time in hits:
             if len(self.shaded_objects) > 100:
                 break 
@@ -158,7 +159,20 @@ class RainbowAlga(object):
                 unique_omkeys.append(omkey)
                 x, y, z = omkeys[omkey][0]
                 #selected_hits.append(Hit(x, y, z, hit_time))
+                hit_times.append(hit_time)
                 self.shaded_objects.append(Hit(x, y, z, hit_time))
+
+        print("First hit: {0}".format(min(hit_times)))
+        print("Last hit:  {0}".format(max(hit_times)))
+        def spectrum(time):
+            min_time = min(hit_times)
+            max_time = max(hit_times)
+            diff = max_time - min_time
+            one_percent = diff/100
+            progress = (time - min_time) / one_percent / 100
+            return (1, 1-progress, progress)
+
+        self.spectrum = spectrum
 
 
         self.mouse_x = None
@@ -200,7 +214,7 @@ class RainbowAlga(object):
         glEnable(GL_LIGHTING)
         
         for obj in self.shaded_objects:
-            obj.draw(self.clock.time)
+            obj.draw(self.clock.time, self.spectrum)
 
         glDisable(GL_LIGHTING)
 
