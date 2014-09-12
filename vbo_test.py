@@ -29,10 +29,93 @@ logo_bytes = logo.tobytes("raw", "RGB", 0, -1)
 
 
 class RainbowAlga(object):
-    def __init__(self):   
+    def __init__(self, width=800, height=600, x=112, y=84):
+
+        self.init_opengl(width=width, height=height, x=x, y=y)
+
+        print("OpenGL Version: {0}".format(glGetString(GL_VERSION)))
+        self.clock = Clock(speed=100)
+
+        VERTEX_SHADER = compileShader("""
+        void main() {
+            gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+        }""", GL_VERTEX_SHADER)
+        FRAGMENT_SHADER = compileShader("""
+        void main() {
+            gl_FragColor = vec4(0.8, 0.8, 0.8, 1);
+        }""", GL_FRAGMENT_SHADER)
+        
+        self.shader = compileProgram(VERTEX_SHADER, FRAGMENT_SHADER)
+        
+        self.coordsys = vbo.VBO(
+            np.array([
+                [-1, 0, 0],
+                [1, 0, 0],
+                [0, -1, 0],
+                [0, 1, 0],
+                [0, 0, -1],
+                [0, 0, 1]
+                ], 'f')
+            )
+
+
+        self.objects = []
+        self.shaded_objects = []
+
+        omkeys = pickle.load(open('geometry_dump.pickle', 'r'))
+        doms = [pmt for pmt in omkeys.items() if pmt[0][2] == 0]
+        self.dom_positions = np.array([pos for omkey, (pos, dir) in doms], 'f')
+        self.min_z = min([z for x, y, z in self.dom_positions])
+        self.max_z = max([z for x, y, z in self.dom_positions])
+
+        self.dom_positions_vbo = vbo.VBO(self.dom_positions)
+
+
+        muon = pickle.load(open('muon_sample.pickle', 'r'))
+        muon_pos = muon[0]
+        muon_dir = muon[1]
+
+        particle = Particle(muon_pos[0], muon_pos[1], muon_pos[2],
+                            muon_dir[0], muon_dir[1], muon_dir[2], constants.c)
+        self.objects.append(particle)
+
+        pmt_hits = pickle.load(open('hits_sample.pickle', 'r'))
+        hits = [((omkey[0], omkey[1], 0), time) for omkey, time in pmt_hits]
+        hits.sort(key=lambda x: x[1])
+        unique_omkeys = []
+        hit_times = []
+        for omkey, hit_time in hits:
+            if len(self.shaded_objects) > 100:
+                break 
+            if not omkey in unique_omkeys:
+                unique_omkeys.append(omkey)
+                x, y, z = omkeys[omkey][0]
+                hit_times.append(hit_time)
+                self.shaded_objects.append(Hit(x, y, z, hit_time))
+
+        def spectrum(time):
+            min_time = min(hit_times)
+            max_time = max(hit_times)
+            diff = max_time - min_time
+            one_percent = diff/100
+            progress = (time - min_time) / one_percent / 100
+            return (1, 1-progress, progress)
+        self.spectrum = spectrum
+
+        self.mouse_x = None
+        self.mouse_y = None
+
+        self.show_help = False
+        self._help_string = None
+
+        self.clock.reset()
+        glutMainLoop()
+        
+
+    def init_opengl(self, width, height, x, y):
         glutInit()
-        glutInitWindowPosition(112, 84)
-        glutInitWindowSize(800, 600)
+        glutInitWindowPosition(x, y)
+        glutInitWindowSize(width, height)
         glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE)
         glutCreateWindow("Rainbow Alga")
         glutDisplayFunc(self.render)
@@ -79,111 +162,6 @@ class RainbowAlga(object):
         glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess)
 
 
-
-        print("OpenGL Version: {0}".format(glGetString(GL_VERSION)))
-        self.clock = Clock(speed=100)
-
-        VERTEX_SHADER = compileShader("""
-        void main() {
-            gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-        }""", GL_VERTEX_SHADER)
-        FRAGMENT_SHADER = compileShader("""
-        void main() {
-            gl_FragColor = vec4(0.8, 0.8, 0.8, 1);
-        }""", GL_FRAGMENT_SHADER)
-        
-        self.shader = compileProgram(VERTEX_SHADER, FRAGMENT_SHADER)
-        
-        self.triangles = vbo.VBO(
-            np.array([
-                [0.4, 1, 1],
-                [-1, -1, 0],
-                [1, -1, 0],
-                [2, -1, 0],
-                [4, -1, 0],
-                [4, 1, 0],
-                [2, -1, 0],
-                [4, 1, 0],
-                [2, 1, 0],
-                [0, 0, 0],
-                [1, 1, 1],
-                [-1, 0, 2]
-                ], 'f')
-            )
-        self.coordsys = vbo.VBO(
-            np.array([
-                [-1, 0, 0],
-                [1, 0, 0],
-                [0, -1, 0],
-                [0, 1, 0],
-                [0, 0, -1],
-                [0, 0, 1]
-                ], 'f')
-            )
-
-
-        self.objects = []
-        self.shaded_objects = []
-
-        omkeys = pickle.load(open('geometry_dump.pickle', 'r'))
-        doms = [pmt for pmt in omkeys.items() if pmt[0][2] == 0]
-        self.dom_positions = np.array([pos for omkey, (pos, dir) in doms], 'f')
-        self.min_z = min([z for x, y, z in self.dom_positions])
-        self.max_z = max([z for x, y, z in self.dom_positions])
-        #self.line_positions_lower = [pos for omkey, (pos, dir) in doms
-        #                             if omkey[1] == 1 and omkey[2] == 0]
-        #self.line_positions_upper = [(x, y, self.max_z) for x, y, z in self.line_positions_lower]
-        #self.line_positions = zip(self.line_positions_lower, self.line_positions_upper)
-
-        self.dom_positions_vbo = vbo.VBO(self.dom_positions)
-        #self.line_positions_vbo = vbo.VBO(self.line_positions)
-
-
-        muon = pickle.load(open('muon_sample.pickle', 'r'))
-        muon_pos = muon[0]
-        muon_dir = muon[1]
-
-        particle = Particle(muon_pos[0], muon_pos[1], muon_pos[2],
-                            muon_dir[0], muon_dir[1], muon_dir[2], constants.c)
-        self.objects.append(particle)
-
-        pmt_hits = pickle.load(open('hits_sample.pickle', 'r'))
-        hits = [((omkey[0], omkey[1], 0), time) for omkey, time in pmt_hits]
-        hits.sort(key=lambda x: x[1])
-        unique_omkeys = []
-        hit_times = []
-        for omkey, hit_time in hits:
-            if len(self.shaded_objects) > 100:
-                break 
-            if not omkey in unique_omkeys:
-                unique_omkeys.append(omkey)
-                x, y, z = omkeys[omkey][0]
-                #selected_hits.append(Hit(x, y, z, hit_time))
-                hit_times.append(hit_time)
-                self.shaded_objects.append(Hit(x, y, z, hit_time))
-
-        print("First hit: {0}".format(min(hit_times)))
-        print("Last hit:  {0}".format(max(hit_times)))
-        def spectrum(time):
-            min_time = min(hit_times)
-            max_time = max(hit_times)
-            diff = max_time - min_time
-            one_percent = diff/100
-            progress = (time - min_time) / one_percent / 100
-            return (1, 1-progress, progress)
-
-        self.spectrum = spectrum
-
-
-        self.mouse_x = None
-        self.mouse_y = None
-
-        self.show_help = False
-        self._help_string = None
-
-        self.clock.reset()
-        glutMainLoop()
-        
     def render(self):
         self.clock.record_frame_time()
 
@@ -193,20 +171,7 @@ class RainbowAlga(object):
             camera.rotate_z(0.2)
         camera.look()
 
-        glUseProgram(self.shader)
-        try:
-            self.dom_positions_vbo.bind()
-            try:
-                glEnableClientState(GL_VERTEX_ARRAY)
-                glVertexPointerf(self.dom_positions_vbo)
-                #glDrawArrays(GL_TRIANGLES, 0, 12)
-                glPointSize(2)
-                glDrawArrays(GL_POINTS, 0, len(self.dom_positions)*3)
-            finally:
-                self.dom_positions_vbo.unbind()
-                glDisableClientState(GL_VERTEX_ARRAY)
-        finally:
-            glUseProgram(0)
+        self.draw_detector()
 
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_LINE_SMOOTH)
@@ -221,7 +186,28 @@ class RainbowAlga(object):
         for obj in self.objects:
             obj.draw(self.clock.time)
 
-        # 2D stuff
+        self.draw_gui()
+
+
+        glutSwapBuffers()
+
+    def draw_detector(self):
+        glUseProgram(self.shader)
+        try:
+            self.dom_positions_vbo.bind()
+            try:
+                glEnableClientState(GL_VERTEX_ARRAY)
+                glVertexPointerf(self.dom_positions_vbo)
+                glPointSize(2)
+                glDrawArrays(GL_POINTS, 0, len(self.dom_positions)*3)
+            finally:
+                self.dom_positions_vbo.unbind()
+                glDisableClientState(GL_VERTEX_ARRAY)
+        finally:
+            glUseProgram(0)
+
+
+    def draw_gui(self):
         menubar_height = logo.size[1] + 4
         width = glutGet(GLUT_WINDOW_WIDTH)
         height = glutGet(GLUT_WINDOW_HEIGHT)
@@ -259,10 +245,8 @@ class RainbowAlga(object):
                      .format(self.clock.fps, self.clock.time),
                      10, 30)
         if self.show_help:
-            #draw_text_2d("narf\nnarf\nfoo", 10, 80)
             self.display_help()
 
-        glutSwapBuffers()
 
     def resize(self, width, height):
         if width < 400:
@@ -305,15 +289,7 @@ class RainbowAlga(object):
             camera.distance = camera.distance + 50
 
         if(key == "s"):
-            width = glutGet(GLUT_WINDOW_WIDTH)
-            height = glutGet(GLUT_WINDOW_HEIGHT)
-            pixelset = (GLubyte * (3*width*height))(0)
-            glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixelset)
-            image = Image.fromstring(mode="RGB", size=(width, height), data=pixelset)     
-            image = image.transpose(Image.FLIP_TOP_BOTTOM)
-            image.save('screenshot.png')
-            print("Screenshot saved as 'screenshot.png'.")
-
+            self.save_screenshot()
         if(key == " "):
             if self.clock.is_paused:
                 self.clock.resume()
@@ -332,6 +308,17 @@ class RainbowAlga(object):
         camera.move_z(-(self.mouse_y - y)*8)
         self.mouse_x = x
         self.mouse_y = y
+
+    def save_screenshot(self):
+        width = glutGet(GLUT_WINDOW_WIDTH)
+        height = glutGet(GLUT_WINDOW_HEIGHT)
+        pixelset = (GLubyte * (3*width*height))(0)
+        glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixelset)
+        image = Image.fromstring(mode="RGB", size=(width, height), data=pixelset)     
+        image = image.transpose(Image.FLIP_TOP_BOTTOM)
+        image.save('screenshot.png')
+        print("Screenshot saved as 'screenshot.png'.")
+
 
     @property
     def help_string(self):
