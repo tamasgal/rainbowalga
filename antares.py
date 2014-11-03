@@ -347,7 +347,7 @@ class RainbowAlga(object):
                 'LEFT': '+100ns',
                 'RIGHT': '-100ns',
                 's': 'save screenshot (screenshot.png)',
-                'v': 'start/stop recording (Frame_XXXXX.jpg)'
+                'v': 'start/stop recording (Frame_XXXXX.jpg)',
                 '<space>': 'pause time',
                 '<esc> or q': 'quit',
                 '+': 'zoom in',
