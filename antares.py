@@ -101,7 +101,7 @@ class RainbowAlga(object):
             diff = max_time - min_time
             one_percent = diff/100
             progress = (time - min_time) / one_percent / 100
-            return (1, 1-progress, progress)
+            return (1-progress, 0, progress)
         self.spectrum = spectrum
 
         self.mouse_x = None

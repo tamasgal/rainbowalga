@@ -48,7 +48,7 @@ class Hit(object):
         glColor3f(*color)
         #glEnable(GL_COLOR_MATERIAL)
         #glColorMaterial(GL_FRONT, GL_DIFFUSE)
-        glutSolidSphere(5, 16, 16)
+        glutSolidSphere(5, 32, 32)
         #glDisable(GL_COLOR_MATERIAL)
 
 
