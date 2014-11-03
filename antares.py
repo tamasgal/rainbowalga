@@ -35,6 +35,9 @@ class RainbowAlga(object):
 
         print("OpenGL Version: {0}".format(glGetString(GL_VERSION)))
         self.clock = Clock(speed=100)
+        self.timer = Clock(snooze_interval=1/30)
+        self.frame_index = 0
+        self.is_recording = False
 
         VERTEX_SHADER = compileShader("""
         void main() {
@@ -111,6 +114,7 @@ class RainbowAlga(object):
         self._help_string = None
 
         self.clock.reset()
+        self.timer.reset()
         glutMainLoop()
         
 
@@ -166,6 +170,13 @@ class RainbowAlga(object):
 
     def render(self):
         self.clock.record_frame_time()
+
+        if self.is_recording and not self.timer.is_snoozed:
+            self.frame_index += 1
+            frame_name = "Frame_{0:05d}.jpg".format(self.frame_index)
+            self.save_screenshot(frame_name)
+            self.timer.snooze()
+
 
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
@@ -292,6 +303,10 @@ class RainbowAlga(object):
 
         if(key == "s"):
             self.save_screenshot()
+
+        if(key == 'v'):
+            self.frame_index = 0
+            self.is_recording = not self.is_recording
         if(key == " "):
             if self.clock.is_paused:
                 self.clock.resume()
@@ -312,15 +327,15 @@ class RainbowAlga(object):
         self.mouse_x = x
         self.mouse_y = y
 
-    def save_screenshot(self):
+    def save_screenshot(self, name='screenshot.png'):
         width = glutGet(GLUT_WINDOW_WIDTH)
         height = glutGet(GLUT_WINDOW_HEIGHT)
         pixelset = (GLubyte * (3*width*height))(0)
         glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixelset)
         image = Image.fromstring(mode="RGB", size=(width, height), data=pixelset)     
         image = image.transpose(Image.FLIP_TOP_BOTTOM)
-        image.save('screenshot.png')
-        print("Screenshot saved as 'screenshot.png'.")
+        image.save(name)
+        print("Screenshot saved as '{0}'.".format(name))
 
 
     @property
@@ -332,6 +347,7 @@ class RainbowAlga(object):
                 'LEFT': '+100ns',
                 'RIGHT': '-100ns',
                 's': 'save screenshot (screenshot.png)',
+                'v': 'start/stop recording (Frame_XXXXX.jpg)'
                 '<space>': 'pause time',
                 '<esc> or q': 'quit',
                 '+': 'zoom in',
