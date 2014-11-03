@@ -4,13 +4,14 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 
 class Particle(object):
-    def __init__(self, x, y, z, dx, dy, dz, speed):
+    def __init__(self, x, y, z, dx, dy, dz, time, speed):
         self.x = x
         self.y = y
         self.z = z
         self.dx = dx
         self.dy = dy
         self.dz = dz
+        self.time = time * 1e-9
         self.speed = speed
 
     def draw(self, time, line_width=3, color=(1.0, 0.0, 0.6)):
@@ -19,10 +20,12 @@ class Particle(object):
         glLineWidth(line_width)
         glColor3f(*color)
         glBegin(GL_LINES)
-        glVertex3f(self.x, self.y, self.z)
-        glVertex3f(self.x + self.speed * time * self.dx,
-                   self.y + self.speed * time * self.dy,
-                   self.z + self.speed * time * self.dz)
+        glVertex3f(self.x + self.speed * -self.time * self.dx,
+                   self.y + self.speed * -self.time * self.dy,
+                   self.z + self.speed * -self.time * self.dz)
+        glVertex3f(self.x + self.speed * (time - self.time) * self.dx,
+                   self.y + self.speed * (time - self.time) * self.dy,
+                   self.z + self.speed * (time - self.time) * self.dz)
         glEnd()
         glPopMatrix()
 
@@ -45,7 +48,7 @@ class Hit(object):
         glColor3f(*color)
         #glEnable(GL_COLOR_MATERIAL)
         #glColorMaterial(GL_FRONT, GL_DIFFUSE)
-        glutSolidSphere(15, 16, 16)
+        glutSolidSphere(5, 16, 16)
         #glDisable(GL_COLOR_MATERIAL)
 
 

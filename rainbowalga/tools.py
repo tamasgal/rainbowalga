@@ -32,6 +32,13 @@ class Clock(object):
             current_time = self.unix_time()
         return (current_time - self.offset) * self.speed
 
+    def rewind(self, time):
+        self.offset += time / self.speed
+
+    def fast_forward(self, time):
+        self.offset -= time / self.speed
+
+
     def reset(self):
         """Set the offset to now."""
         now = self.unix_time()

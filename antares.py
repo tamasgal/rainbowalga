@@ -62,7 +62,7 @@ class RainbowAlga(object):
         self.objects = []
         self.shaded_objects = []
 
-        omkeys = pickle.load(open('antares/geometry_antares.pickle', 'r'))
+        omkeys = pickle.load(open('examples/antares/geometry_antares.pickle', 'r'))
         doms = [pmt for pmt in omkeys.items() if pmt[0][2] == 0]
         self.dom_positions = np.array([pos for omkey, (pos, dir) in doms], 'f')
         self.min_z = min([z for x, y, z in self.dom_positions])
@@ -71,15 +71,17 @@ class RainbowAlga(object):
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
 
-        muon = pickle.load(open('antares/muon.pickle', 'r'))
+        muon = pickle.load(open('examples/antares/muon.pickle', 'r'))
         muon_pos = muon[0]
         muon_dir = muon[1]
+        muon_time = muon[2]
 
         particle = Particle(muon_pos[0], muon_pos[1], muon_pos[2],
-                            muon_dir[0], muon_dir[1], muon_dir[2], constants.c)
+                            muon_dir[0], muon_dir[1], muon_dir[2],
+                            muon_time, constants.c)
         self.objects.append(particle)
 
-        pmt_hits = pickle.load(open('antares/hits.pickle', 'r'))
+        pmt_hits = pickle.load(open('examples/antares/hits.pickle', 'r'))
         hits = [((omkey[0], omkey[1], 0), time) for omkey, time in pmt_hits]
         hits.sort(key=lambda x: x[1])
         unique_omkeys = []
@@ -299,9 +301,10 @@ class RainbowAlga(object):
             raise SystemExit
 
     def special_keyboard(self, key, x, z):
-        print("Special key pressed: '{0}'".format(key))
         if key == GLUT_KEY_LEFT:
-            print("Left key pressed")
+            self.clock.rewind(100)
+        if key == GLUT_KEY_RIGHT:
+            self.clock.fast_forward(100)
 
     def drag(self, x, y):
         camera.rotate_z(self.mouse_x - x)
@@ -326,6 +329,8 @@ class RainbowAlga(object):
             options = {
                 'h': 'help',
                 'r': 'reset time',
+                'LEFT': '+100ns',
+                'RIGHT': '-100ns',
                 's': 'save screenshot (screenshot.png)',
                 '<space>': 'pause time',
                 '<esc> or q': 'quit',
