@@ -12,7 +12,8 @@ from OpenGL.GL import (glMatrixMode, GL_MODELVIEW, glBegin, glEnd, glEnable,
                        GL_DEPTH_TEST, glLoadIdentity, GL_PROJECTION,
                        GL_PROJECTION_MATRIX, glGetDouble, glPushMatrix,
                        glPopMatrix, glVertex3f, glLineWidth, glOrtho,
-                       glColor3f, glRasterPos, glRasterPos2i)
+                       glColor3f, glRasterPos, glRasterPos2i, GL_LINE_SMOOTH,
+                       GL_FLAT, GL_LINES, glTranslated, glRotated)
 
 from .core import Position
 
