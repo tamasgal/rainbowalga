@@ -4,9 +4,15 @@ import time
 
 import numpy as np
 
-from OpenGL.GLUT import *
-from OpenGL.GLU import *
-from OpenGL.GL import *
+from OpenGL.GLUT import (glutGet, GLUT_WINDOW_WIDTH, GLUT_WINDOW_HEIGHT,
+                         glutBitmapCharacter, GLUT_BITMAP_8_BY_13,
+                         glutSolidCone)
+from OpenGL.GLU import gluLookAt
+from OpenGL.GL import (glMatrixMode, GL_MODELVIEW, glBegin, glEnd, glEnable,
+                       GL_DEPTH_TEST, glLoadIdentity, GL_PROJECTION,
+                       GL_PROJECTION_MATRIX, glGetDouble, glPushMatrix,
+                       glPopMatrix, glVertex3f, glLineWidth, glOrtho,
+                       glColor3f, glRasterPos, glRasterPos2i)
 
 from .core import Position
 

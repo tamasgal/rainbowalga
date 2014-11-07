@@ -2,9 +2,12 @@ from __future__ import division, absolute_import, print_function
 
 import pickle
 
-from OpenGL.GLUT import *
-from OpenGL.GLU import *
-from OpenGL.GL import *
+from OpenGL.GLUT import glutSolidSphere
+from OpenGL.GL import (glBegin, glColor3f, glColorMaterial, glDisable,
+                       glEnable, glEnd, glLineWidth, glPointSize, glPopMatrix,
+                       glPushMatrix, glShadeModel, glTranslated, glVertex3f,
+                       GL_POINTS, GL_LINES, GL_DEPTH_TEST, GL_FLAT,
+                       GL_LIGHTING, GL_COLOR_MATERIAL, GL_FRONT, GL_DIFFUSE)
 
 from .core import Position
 

@@ -1,7 +1,10 @@
 from __future__ import division, absolute_import, print_function
 
-from OpenGL.GL import *
-from OpenGL.GLUT import *
+from OpenGL.GL import (glPushMatrix,glLineWidth, glColor3f, glBegin, GL_LINES,
+                       glEnd, glVertex3f, glPushMatrix, glPopMatrix,
+                       glTranslated)
+from OpenGL.GLUT import glutSolidSphere
+
 
 class Particle(object):
     def __init__(self, x, y, z, dx, dy, dz, time, speed):

@@ -3,11 +3,36 @@ from __future__ import division, absolute_import, print_function
 import time
 import pickle
 
-from OpenGL.GLUT import *
-from OpenGL.GLU import *
-from OpenGL.GL import *
+from OpenGL.GLUT import (glutCreateWindow, glutDisplayFunc, glutIdleFunc,
+                         glutInit, glutInitDisplayMode, glutInitWindowPosition,
+                         glutInitWindowSize, glutKeyboardFunc, glutMainLoop,
+                         glutMotionFunc, glutMouseFunc, glutReshapeFunc,
+                         glutReshapeWindow, glutSpecialFunc, glutSwapBuffers,
+                         glutGet,
+                         GLUT_DOUBLE, GLUT_RGB, GLUT_DEPTH, GLUT_MULTISAMPLE,
+                         GLUT_WINDOW_WIDTH, GLUT_WINDOW_HEIGHT,
+                         GLUT_LEFT_BUTTON, GLUT_DOWN, GLUT_KEY_LEFT,
+                         GLUT_KEY_RIGHT)
+from OpenGL.GLU import gluPerspective
+from OpenGL.GL import (glBegin, glClear, glClearColor, glClearDepth, glColor3f,
+                       glDisable, glDisableClientState, glDrawArrays,
+                       glDrawPixels, glEnable, glEnableClientState, glEnd,
+                       glFrustum, glLightfv, glLoadIdentity, glMaterialfv,
+                       glMatrixMode, glOrtho, glPointSize, glPopMatrix,
+                       glPushMatrix, glRasterPos, glReadPixels, glShadeModel,
+                       glUseProgram, glVertex2f, glVertexPointerf, glViewport,
+                       glGetString, GLubyte,
+                       GL_PROJECTION, GL_DEPTH_BUFFER_BIT,
+                       GL_COLOR_BUFFER_BIT, GL_LIGHT0, GL_NORMALIZE,
+                       GL_COLOR_MATERIAL, GL_LIGHTING, GL_AMBIENT, GL_DIFFUSE,
+                       GL_SPECULAR, GL_POSITION, GL_FRONT, GL_SHININESS,
+                       GL_VERSION, GL_VERTEX_SHADER, GL_FRAGMENT_SHADER,
+                       GL_VERTEX_ARRAY, GL_POINTS, GL_DEPTH_TEST,
+                       GL_LINE_SMOOTH, GL_FLAT, GL_MODELVIEW, GL_CULL_FACE,
+                       GL_QUADS, GL_RGB, GL_UNSIGNED_BYTE)
 from OpenGL.arrays import vbo
-from OpenGL.GL.shaders import *
+from OpenGL.GL.shaders import compileShader, compileProgram
+
 
 import numpy as np
 
