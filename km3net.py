@@ -90,11 +90,8 @@ class RainbowAlga(object):
         self.objects = []
         self.shaded_objects = []
 
-        event_pickle = pickle.load(open('examples/antares/events.pickle', 'r'))
-        event = event_pickle[2]
 
-        #omkeys = pickle.load(open('examples/antares/geometry_antares.pickle', 'r'))
-        omkeys = event['geo']
+        omkeys = pickle.load(open('examples/km3net/geometry_dump.pickle', 'r'))
         doms = [pmt for pmt in omkeys.items() if pmt[0][2] == 0]
         self.dom_positions = np.array([pos for omkey, (pos, dir) in doms], 'f')
         self.min_z = min([z for x, y, z in self.dom_positions])
@@ -103,8 +100,7 @@ class RainbowAlga(object):
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
 
-        #muon = pickle.load(open('examples/antares/muon.pickle', 'r'))
-        muon = event['particle']
+        muon = pickle.load(open('examples/km3net/muon_new.pickle', 'r'))
         muon_pos = muon[0]
         muon_dir = muon[1]
         muon_time = muon[2]
@@ -114,20 +110,19 @@ class RainbowAlga(object):
                             muon_time, constants.c)
         self.objects.append(particle)
 
-        #pmt_hits = pickle.load(open('examples/antares/hits.pickle', 'r'))
-        pmt_hits = event['hitseries']
-        hits = [((omkey[0], omkey[1], 0), time, charge) for omkey, time, charge in pmt_hits]
+        pmt_hits = pickle.load(open('examples/km3net/hits_sample.pickle', 'r'))
+        hits = [((omkey[0], omkey[1], 0), time) for omkey, time in pmt_hits]
         hits.sort(key=lambda x: x[1])
         unique_omkeys = []
         hit_times = []
-        for omkey, hit_time, charge in hits:
+        for omkey, hit_time in hits:
             if len(self.shaded_objects) > 100:
                 break
             if not omkey in unique_omkeys:
                 unique_omkeys.append(omkey)
                 x, y, z = omkeys[omkey][0]
                 hit_times.append(hit_time)
-                self.shaded_objects.append(Hit(x, y, z, hit_time, charge))
+                self.shaded_objects.append(Hit(x, y, z, hit_time, 5))
 
         def spectrum(time):
             min_time = min(hit_times)

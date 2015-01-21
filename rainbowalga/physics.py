@@ -1,5 +1,7 @@
 from __future__ import division, absolute_import, print_function
 
+import numpy as np
+
 from OpenGL.GL import (glPushMatrix,glLineWidth, glColor3f, glBegin, GL_LINES,
                        glEnd, glVertex3f, glPushMatrix, glPopMatrix,
                        glTranslated)
@@ -34,11 +36,12 @@ class Particle(object):
 
 
 class Hit(object):
-    def __init__(self, x, y, z, time):
+    def __init__(self, x, y, z, time, charge=1):
         self.x = x
         self.y = y
         self.z = z
         self.time = time
+        self.charge = charge
 
     def draw(self, time, spectrum):
         if time < self.time:
@@ -51,7 +54,7 @@ class Hit(object):
         glColor3f(*color)
         #glEnable(GL_COLOR_MATERIAL)
         #glColorMaterial(GL_FRONT, GL_DIFFUSE)
-        glutSolidSphere(5, 32, 32)
+        glutSolidSphere(int(5*np.sqrt(self.charge)), 32, 32)
         #glDisable(GL_COLOR_MATERIAL)
 
 
