@@ -1,9 +1,9 @@
 from setuptools import setup
 
-import rainbowalga
+from rainbowalga import version
 
 setup(name='rainbowalga',
-      version=rainbowalga.version,
+      version=version,
       url='http://github.com/tamasgal/rainbowalga/',
       description='A 3D event display for KM3NeT',
       author='Tamas Gal',
