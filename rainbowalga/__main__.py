@@ -1,3 +1,19 @@
+# coding=utf-8
+# Filename: app.py
+"""
+RainbowAlga
+
+Usage:
+    rainbowalga -i <file> -d <file>
+    rainbowalga (-h | --help)
+    pipeinspector --version
+
+Options:
+    -h --help       Show this screen.
+    -i <file>       Event file (currently only EVT).
+    -d <file>       Detector file (DETX).
+
+"""
 from __future__ import division, absolute_import, print_function
 
 import time
@@ -42,6 +58,7 @@ from PIL import Image
 from rainbowalga.tools import Clock, Camera, draw_text_2d, draw_text_3d
 from rainbowalga.physics import Particle, Hit
 from rainbowalga import constants
+from rainbowalga import version
 
 from km3pipe.dataclasses import Position
 from km3pipe.hardware import Detector
@@ -49,7 +66,8 @@ from km3pipe.pumps import EvtPump
 
 
 class RainbowAlga(object):
-    def __init__(self, width=800, height=600, x=112, y=84):
+    def __init__(self, detector_file=None, event_file=None,
+                 width=800, height=600, x=112, y=84):
         self.camera = Camera()
         self.camera.is_rotating = True
 
@@ -104,14 +122,14 @@ class RainbowAlga(object):
 
         self.spectrum = None
 
-        self.detector = Detector('/Users/tamasgal/Data/KM3NeT/Detector/km3net_jul13_90m.detx')
+        self.detector = Detector(detector_file)
         self.dom_positions = np.array([tuple(pos) for pos in self.detector.dom_positions], 'f')
         self.min_z = min([z for x, y, z in self.dom_positions])
         self.max_z = max([z for x, y, z in self.dom_positions])
         self.camera.target = Position((0, 0, (self.max_z - self.min_z) / 2))
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
-        self.pump = EvtPump(filename='/Users/tamasgal/Data/KM3NeT/Luigi/nueCC.evt')
+        self.pump = EvtPump(filename=event_file)
         self.load_blob(0)
 
         self.clock.reset()
@@ -446,7 +464,11 @@ class RainbowAlga(object):
 
 
 def main():
-    app = RainbowAlga()
+    from docopt import docopt
+    arguments = docopt(__doc__, version=version)
+    event_file = arguments['-i']
+    detector_file = arguments['-d']
+    app = RainbowAlga(detector_file, event_file)
 
  
 
