@@ -127,7 +127,7 @@ class RainbowAlga(object):
         for track in tracks:
             particle = Particle(track.pos.x, track.pos.y, track.pos.z,
                                 track.dir.x, track.dir.y, track.dir.z,
-                                track.time, constants.c)
+                                track.time, constants.c, track.length)
             self.objects.append(particle)
         hits = blob['EvtRawHits']
         hit_times = []
