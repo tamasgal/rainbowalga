@@ -2,3 +2,5 @@ Pillow
 PyOpenGL
 freetype-py
 numpy
+km3pipe
+docopt
