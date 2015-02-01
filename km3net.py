@@ -39,9 +39,12 @@ import numpy as np
 from PIL import Image
 
 from rainbowalga.tools import Clock, Camera, draw_text_2d, draw_text_3d
-from rainbowalga.core import Position
 from rainbowalga.physics import Particle, Hit
 from rainbowalga import constants
+
+from km3pipe.dataclasses import Position
+from km3pipe.hardware import Detector
+from km3pipe.pumps import EvtPump
 
 camera = Camera()
 camera.is_rotating = True
@@ -62,6 +65,7 @@ class RainbowAlga(object):
         self.clock = Clock(speed=100)
         self.timer = Clock(snooze_interval=1/30)
         self.frame_index = 0
+        self.event_index = 0
         self.is_recording = False
 
         VERTEX_SHADER = compileShader("""
@@ -86,43 +90,52 @@ class RainbowAlga(object):
                 ], 'f')
             )
 
+        self.blob = None
+        self.objects = []
+        self.shaded_objects = []
+
+        self.mouse_x = None
+        self.mouse_y = None
+
+        self.show_help = False
+        self._help_string = None
+        self.show_info = False
+
+        self.spectrum = None
+
+        self.detector = Detector('/Users/tamasgal/Data/KM3NeT/Detector/km3net_jul13_90m.detx')
+        self.dom_positions = np.array([tuple(pos) for pos in self.detector.dom_positions], 'f')
+        self.min_z = min([z for x, y, z in self.dom_positions])
+        self.max_z = max([z for x, y, z in self.dom_positions])
+        camera.target = Position((0, 0, (self.max_z - self.min_z) / 2))
+        self.dom_positions_vbo = vbo.VBO(self.dom_positions)
+
+        self.pump = EvtPump(filename='/Users/tamasgal/Data/KM3NeT/Luigi/nueCC.evt')
+        self.load_blob(0)
+
+        self.clock.reset()
+        self.timer.reset()
+        glutMainLoop()
+
+    def load_blob(self, index=0):
+        blob = self.blob = self.pump.get_blob(index)
 
         self.objects = []
         self.shaded_objects = []
 
-
-        omkeys = pickle.load(open('examples/km3net/geometry_dump.pickle', 'r'))
-        doms = [pmt for pmt in omkeys.items() if pmt[0][2] == 0]
-        self.dom_positions = np.array([pos for omkey, (pos, dir) in doms], 'f')
-        self.min_z = min([z for x, y, z in self.dom_positions])
-        self.max_z = max([z for x, y, z in self.dom_positions])
-
-        self.dom_positions_vbo = vbo.VBO(self.dom_positions)
-
-
-        muon = pickle.load(open('examples/km3net/muon_new.pickle', 'r'))
-        muon_pos = muon[0]
-        muon_dir = muon[1]
-        muon_time = muon[2]
-
-        particle = Particle(muon_pos[0], muon_pos[1], muon_pos[2],
-                            muon_dir[0], muon_dir[1], muon_dir[2],
-                            muon_time, constants.c)
-        self.objects.append(particle)
-
-        pmt_hits = pickle.load(open('examples/km3net/hits_sample.pickle', 'r'))
-        hits = [((omkey[0], omkey[1], 0), time) for omkey, time in pmt_hits]
-        hits.sort(key=lambda x: x[1])
-        unique_omkeys = []
+        tracks = blob['TrackIns']
+        for track in tracks:
+            particle = Particle(track.pos.x, track.pos.y, track.pos.z,
+                                track.dir.x, track.dir.y, track.dir.z,
+                                track.time, constants.c)
+            self.objects.append(particle)
+        hits = blob['EvtRawHits']
         hit_times = []
-        for omkey, hit_time in hits:
-            if len(self.shaded_objects) > 100:
-                break
-            if not omkey in unique_omkeys:
-                unique_omkeys.append(omkey)
-                x, y, z = omkeys[omkey][0]
-                hit_times.append(hit_time)
-                self.shaded_objects.append(Hit(x, y, z, hit_time, 5))
+        step_size = int(len(hits) / 100) + 1
+        for hit in hits[::step_size]:
+            hit_times.append(hit.time)
+            x, y, z = self.detector.pmt_with_id(hit.pmt_id).pos
+            self.shaded_objects.append(Hit(x, y, z, hit.time, 5))
 
         def spectrum(time):
             min_time = min(hit_times)
@@ -133,15 +146,23 @@ class RainbowAlga(object):
             return (1-progress, 0, progress)
         self.spectrum = spectrum
 
-        self.mouse_x = None
-        self.mouse_y = None
+    def load_next_blob(self):
+        try:
+            self.load_blob(self.event_index + 1)
+        except IndexError:
+            return
+        else:
+            self.clock.reset()
+            self.event_index += 1
 
-        self.show_help = False
-        self._help_string = None
-
-        self.clock.reset()
-        self.timer.reset()
-        glutMainLoop()
+    def load_previous_blob(self):
+        try:
+            self.load_blob(self.event_index - 1)
+        except IndexError:
+            return
+        else:
+            self.clock.reset()
+            self.event_index -= 1
 
 
     def init_opengl(self, width, height, x, y):
@@ -286,6 +307,9 @@ class RainbowAlga(object):
         if self.show_help:
             self.display_help()
 
+        if self.show_info:
+            self.display_info()
+
 
     def resize(self, width, height):
         if width < 400:
@@ -317,15 +341,22 @@ class RainbowAlga(object):
             camera.distance = camera.distance - 2
 
     def keyboard(self, key,  x,  y):
-        print("Key pressed: '{0}'".format(key))
         if(key == "r"):
             self.clock.reset()
         if(key == "h"):
             self.show_help = not self.show_help
+        if(key == 'i'):
+            self.show_info = not self.show_info
         if(key == "+"):
             camera.distance = camera.distance - 50
         if(key == "-"):
             camera.distance = camera.distance + 50
+
+        if(key == 'n'):
+            self.load_next_blob()
+
+        if(key == 'p'):
+            self.load_previous_blob()
 
         if(key == "s"):
             self.save_screenshot()
@@ -369,15 +400,18 @@ class RainbowAlga(object):
         if not self._help_string:
             options = {
                 'h': 'help',
-                'r': 'reset time',
+                'i': 'show event info',
+                'n': 'next event',
+                'p': 'previous event',
                 'LEFT': '+100ns',
                 'RIGHT': '-100ns',
                 's': 'save screenshot (screenshot.png)',
                 'v': 'start/stop recording (Frame_XXXXX.jpg)',
+                'r': 'reset time',
                 '<space>': 'pause time',
-                '<esc> or q': 'quit',
                 '+': 'zoom in',
-                '-': 'zoom out'
+                '-': 'zoom out',
+                '<esc> or q': 'quit',
                 }
             help_string = "Keyboard commands:\n-------------------\n"
             for key in sorted(options.keys()):
@@ -386,9 +420,25 @@ class RainbowAlga(object):
             self._help_string = help_string
         return self._help_string
 
+    @property
+    def blob_info(self):
+        if not self.blob:
+            return ''
+        info_text = ''
+        try:
+            event_number = self.blob['start_event'][0]
+            info_text += "Event #{0}\n".format(event_number)
+        except KeyError:
+            pass
+        return info_text
+
     def display_help(self):
         pos_y = glutGet(GLUT_WINDOW_HEIGHT) - 80
         draw_text_2d(self.help_string, 10, pos_y)
+
+    def display_info(self):
+        pos_y = glutGet(GLUT_WINDOW_HEIGHT) - 100
+        draw_text_2d(self.blob_info, 10, pos_y)
 
 
 if __name__ == "__main__":
