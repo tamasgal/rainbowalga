@@ -358,7 +358,7 @@ class RainbowAlga(object):
                 self.camera.is_rotating = True
 
         if button == 3:
-            slef.camera.distance = self.camera.distance + 2
+            self.camera.distance = self.camera.distance + 2
         if button == 4:
             self.camera.distance = self.camera.distance - 2
 
