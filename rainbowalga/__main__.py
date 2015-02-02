@@ -121,7 +121,7 @@ class RainbowAlga(object):
 
         self.show_help = False
         self._help_string = None
-        self.show_info = False
+        self.show_info = True
 
         self.spectrum = None
 
