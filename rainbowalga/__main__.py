@@ -469,6 +469,11 @@ class RainbowAlga(object):
             info_text += "Event #{0}\n".format(event_number)
         except KeyError:
             pass
+        try:
+            neutrino = self.blob['Neutrino']
+            info_text += str(neutrino)
+        except KeyError:
+            pass
         return info_text
 
     def display_help(self):
@@ -476,8 +481,7 @@ class RainbowAlga(object):
         draw_text_2d(self.help_string, 10, pos_y)
 
     def display_info(self):
-        pos_y = glutGet(GLUT_WINDOW_HEIGHT) - 100
-        draw_text_2d(self.blob_info, 10, pos_y)
+        draw_text_2d(self.blob_info, 150, 30)
 
 
 def main():
