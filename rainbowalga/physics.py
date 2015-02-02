@@ -23,14 +23,19 @@ class Particle(object):
         self.dir = Direction((dx, dy, dz))
         self.time = time * 1e-9
         self.speed = speed
-        self.length = length
+        self.length = abs(length)
         self.color = color
 
     def draw(self, time, line_width=2):
         time = time * 1e-9
 
         pos_start = self.pos + (self.speed * (-self.time) * self.dir)
-        pos_end = self.pos + (self.speed * (time - self.time) * self.dir)
+        path = (self.speed * (time - self.time) * self.dir)
+        if self.length:
+            max_path = self.length * self.dir
+            if np.linalg.norm(max_path) <= np.linalg.norm(path):
+                path = max_path
+        pos_end = self.pos + path
 
         glPushMatrix()
         glLineWidth(line_width)
