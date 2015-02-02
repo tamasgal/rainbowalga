@@ -4,14 +4,16 @@
 RainbowAlga
 
 Usage:
-    rainbowalga -i <file> -d <file>
+    rainbowalga -d <file> EVENT_FILE
+    rainbowalga -d <file> -t <number> EVENT_FILE
     rainbowalga (-h | --help)
     pipeinspector --version
 
 Options:
     -h --help       Show this screen.
-    -i <file>       Event file (currently only EVT).
+    EVENT_FILE      Event file (currently only EVT).
     -d <file>       Detector file (DETX).
+    -t <number>     ToT threshold.
 
 """
 from __future__ import division, absolute_import, print_function
@@ -66,7 +68,7 @@ from km3pipe.pumps import EvtPump
 
 
 class RainbowAlga(object):
-    def __init__(self, detector_file=None, event_file=None,
+    def __init__(self, detector_file=None, event_file=None, min_tot=None,
                  width=800, height=600, x=112, y=84):
         self.camera = Camera()
         self.camera.is_rotating = True
@@ -86,6 +88,7 @@ class RainbowAlga(object):
         self.frame_index = 0
         self.event_index = 0
         self.is_recording = False
+        self.min_tot = min_tot
 
         VERTEX_SHADER = compileShader("""
         void main() {
@@ -123,10 +126,13 @@ class RainbowAlga(object):
         self.spectrum = None
 
         self.detector = Detector(detector_file)
-        self.dom_positions = np.array([tuple(pos) for pos in self.detector.dom_positions], 'f')
-        self.min_z = min([z for x, y, z in self.dom_positions])
-        self.max_z = max([z for x, y, z in self.dom_positions])
-        self.camera.target = Position((0, 0, (self.max_z - self.min_z) / 2))
+        dom_positions = self.detector.dom_positions
+        self.min_z = min([z for x, y, z in dom_positions])
+        self.max_z = max([z for x, y, z in dom_positions])
+        self.z_shift = (self.max_z - self.min_z) / 2
+        print("min_z: {0}, max_z: {1}, z_shift: {2}".format(self.min_z, self.max_z, self.z_shift))
+        self.dom_positions = np.array([tuple(pos) for pos in dom_positions], 'f')
+        self.camera.target = Position((0, 0, self.z_shift))
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
         self.pump = EvtPump(filename=event_file)
@@ -137,6 +143,7 @@ class RainbowAlga(object):
         glutMainLoop()
 
     def load_blob(self, index=0):
+        print("Loading blob {0}...".format(index))
         blob = self.blob = self.pump.get_blob(index)
 
         self.objects = []
@@ -144,17 +151,28 @@ class RainbowAlga(object):
 
         tracks = blob['TrackIns']
         for track in tracks:
-            particle = Particle(track.pos.x, track.pos.y, track.pos.z,
+            particle = Particle(track.pos.x, track.pos.y, track.pos.z + self.z_shift,
                                 track.dir.x, track.dir.y, track.dir.z,
                                 track.time, constants.c, track.length)
             self.objects.append(particle)
+
         hits = blob['EvtRawHits']
+        print("Number of hits: {0}".format(len(hits)))
+        if self.min_tot:
+            hits = [hit for hit in blob['EvtRawHits'] if hit.tot >= self.min_tot]
+            print("Number of hits after ToT={0} cut: {1}"
+                  .format(self.min_tot, len(hits)))
+        if not self.min_tot and len(hits) > 500:
+            print("Warning: consider applying a ToT filter to reduce the "
+                  "amount of hits, according to your graphic cards "
+                  "performance!")
+
         hit_times = []
-        step_size = int(len(hits) / 100) + 1
-        for hit in hits[::step_size]:
+        #step_size = int(len(hits) / 100) + 1
+        for hit in hits:
             hit_times.append(hit.time)
             x, y, z = self.detector.pmt_with_id(hit.pmt_id).pos
-            self.shaded_objects.append(Hit(x, y, z, hit.time, 5))
+            self.shaded_objects.append(Hit(x, y, z, hit.time, hit.tot))
 
         def spectrum(time):
             min_time = min(hit_times)
@@ -466,9 +484,13 @@ class RainbowAlga(object):
 def main():
     from docopt import docopt
     arguments = docopt(__doc__, version=version)
-    event_file = arguments['-i']
+    event_file = arguments['EVENT_FILE']
     detector_file = arguments['-d']
-    app = RainbowAlga(detector_file, event_file)
+    if arguments['-t']:
+        min_tot = float(arguments['-t'])
+    else:
+        min_tot = None
+    app = RainbowAlga(detector_file, event_file, min_tot)
 
  
 
