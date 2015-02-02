@@ -127,12 +127,11 @@ class RainbowAlga(object):
 
         self.detector = Detector(detector_file)
         dom_positions = self.detector.dom_positions
-        self.min_z = min([z for x, y, z in dom_positions])
-        self.max_z = max([z for x, y, z in dom_positions])
-        self.z_shift = (self.max_z - self.min_z) / 2
-        print("min_z: {0}, max_z: {1}, z_shift: {2}".format(self.min_z, self.max_z, self.z_shift))
+        min_z = min([z for x, y, z in dom_positions])
+        max_z = max([z for x, y, z in dom_positions])
+        z_shift = (max_z - min_z) / 2
         self.dom_positions = np.array([tuple(pos) for pos in dom_positions], 'f')
-        self.camera.target = Position((0, 0, self.z_shift))
+        self.camera.target = Position((0, 0, z_shift))
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
         self.pump = EvtPump(filename=event_file)
@@ -151,7 +150,7 @@ class RainbowAlga(object):
 
         tracks = blob['TrackIns']
         for track in tracks:
-            particle = Particle(track.pos.x, track.pos.y, track.pos.z + self.z_shift,
+            particle = Particle(track.pos.x, track.pos.y, track.pos.z + 405.93,
                                 track.dir.x, track.dir.y, track.dir.z,
                                 track.time, constants.c, track.length)
             self.objects.append(particle)
