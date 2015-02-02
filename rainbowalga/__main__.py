@@ -4,16 +4,16 @@
 RainbowAlga
 
 Usage:
-    rainbowalga -d <file> EVENT_FILE
-    rainbowalga -d <file> -t <number> EVENT_FILE
+    rainbowalga [options] EVENT_FILE
     rainbowalga (-h | --help)
-    pipeinspector --version
+    rainbowalga --version
 
 Options:
-    -h --help       Show this screen.
-    EVENT_FILE      Event file (currently only EVT).
-    -d <file>       Detector file (DETX).
-    -t <number>     ToT threshold.
+    EVENT_FILE         Event file (currently only EVT).
+    -h --help          Show this screen.
+    -v --version       Show version.
+    -d FILE            Detector file (DETX).
+    -t MIN_TOT         ToT threshold in ns [default=30].
 
 """
 from __future__ import division, absolute_import, print_function
@@ -74,6 +74,11 @@ class RainbowAlga(object):
         self.camera.is_rotating = True
 
         current_path = os.path.dirname(os.path.abspath(__file__))
+
+        if not detector_file:
+            detector_file = os.path.join(current_path,
+                                         'data/km3net_jul13_90m_r1494.detx')
+
         image_path = os.path.join(current_path, 'images/km3net_logo.bmp')
         self.logo = Image.open(image_path)
         # Create a raw string from the image data - data will be unsigned bytes
@@ -489,10 +494,10 @@ def main():
     arguments = docopt(__doc__, version=version)
     event_file = arguments['EVENT_FILE']
     detector_file = arguments['-d']
-    if arguments['-t']:
+    try:
         min_tot = float(arguments['-t'])
-    else:
-        min_tot = None
+    except TypeError:
+        min_tot = 30 
     app = RainbowAlga(detector_file, event_file, min_tot)
 
  
