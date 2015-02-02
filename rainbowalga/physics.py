@@ -11,7 +11,8 @@ from OpenGL.GLUT import glutSolidSphere
 
 
 class Particle(object):
-    def __init__(self, x, y, z, dx, dy, dz, time, speed, length=None):
+    def __init__(self, x, y, z, dx, dy, dz, time, speed,
+                 length=None, color=(1.0, 0.0, 0.6)):
         self.x = x
         self.y = y
         self.z = z
@@ -22,9 +23,10 @@ class Particle(object):
         self.dir = Direction((dx, dy, dz))
         self.time = time * 1e-9
         self.speed = speed
-        self.length = None
+        self.length = length
+        self.color = color
 
-    def draw(self, time, line_width=2, color=(1.0, 0.0, 0.6)):
+    def draw(self, time, line_width=2):
         time = time * 1e-9
 
         pos_start = self.pos + (self.speed * (-self.time) * self.dir)
@@ -32,7 +34,7 @@ class Particle(object):
 
         glPushMatrix()
         glLineWidth(line_width)
-        glColor3f(*color)
+        glColor3f(*self.color)
         glBegin(GL_LINES)
         glVertex3f(*pos_start)
         glVertex3f(*pos_end)
