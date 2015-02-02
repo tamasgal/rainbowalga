@@ -40,12 +40,12 @@ class Particle(object):
         glPopMatrix()
 
 class Hit(object):
-    def __init__(self, x, y, z, time, charge=1):
+    def __init__(self, x, y, z, time, tot=10):
         self.x = x
         self.y = y
         self.z = z
         self.time = time
-        self.charge = charge
+        self.tot = tot
 
     def draw(self, time, spectrum):
         if time < self.time:
@@ -58,7 +58,7 @@ class Hit(object):
         glColor3f(*color)
         #glEnable(GL_COLOR_MATERIAL)
         #glColorMaterial(GL_FRONT, GL_DIFFUSE)
-        glutSolidSphere(int(5*np.sqrt(self.charge)), 32, 32)
+        glutSolidSphere(int(1+np.sqrt(self.tot)*1.5), 16, 16)
         #glDisable(GL_COLOR_MATERIAL)
 
 
