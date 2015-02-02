@@ -1,6 +1,7 @@
 include README.rst
 include LICENSE.txt
 recursive-include rainbowalga/images *
+recursive-include rainbowalga/data *
 recursive-include docs *
 recursive-exclude docs *.pyc
 recursive-exclude docs *.pyo
