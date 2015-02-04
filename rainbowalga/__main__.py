@@ -58,7 +58,7 @@ import numpy as np
 from PIL import Image
 
 from rainbowalga.tools import Clock, Camera, draw_text_2d, draw_text_3d
-from rainbowalga.physics import Particle, Hit
+from rainbowalga.physics import Particle, ParticleFit, Hit
 from rainbowalga import constants
 from rainbowalga import version
 
@@ -153,12 +153,8 @@ class RainbowAlga(object):
         self.objects = []
         self.shaded_objects = []
 
-        tracks = blob['TrackIns']
-        for track in tracks:
-            particle = Particle(track.pos.x, track.pos.y, track.pos.z + 405.93,
-                                track.dir.x, track.dir.y, track.dir.z,
-                                track.time, constants.c, track.length)
-            self.objects.append(particle)
+        self.add_mc_tracks(blob)
+        self.add_reco_tracks(blob)
 
         hits = blob['EvtRawHits']
         print("Number of hits: {0}".format(len(hits)))
@@ -186,6 +182,34 @@ class RainbowAlga(object):
             progress = (time - min_time) / one_percent / 100
             return (1-progress, 0, progress)
         self.spectrum = spectrum
+
+    def add_mc_tracks(self, blob):
+        """Find MC particles and add them to the objects to render."""
+        try:
+            track_ins = blob['TrackIns']
+        except KeyError:
+            return
+        for track in track_ins:
+            particle = Particle(track.pos.x, track.pos.y, track.pos.z + 405.93,
+                                track.dir.x, track.dir.y, track.dir.z,
+                                track.time, constants.c, track.length)
+            self.objects.append(particle)
+
+    def add_reco_tracks(self, blob):
+        """Find reco particles and add them to the objects to render."""
+        try:
+            track_fits = blob['TrackFits']
+        except KeyError:
+            return
+        for track in track_fits:
+            if not int(track.id) == 314:
+                continue
+            particle = ParticleFit(track.pos.x, track.pos.y,
+                                   track.pos.z + 405.93,
+                                   track.dir.x, track.dir.y, track.dir.z,
+                                   constants.c, track.ts, track.te)
+            print("Found track fit: {0}".format(track))
+            self.objects.append(particle)
 
     def load_next_blob(self):
         try:
