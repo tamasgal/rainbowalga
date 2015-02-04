@@ -46,6 +46,47 @@ class Particle(object):
         glEnd()
         glPopMatrix()
 
+
+class ParticleFit(object):
+    def __init__(self, x, y, z, dx, dy, dz, speed, ts, te,
+                 color=(1.0, 1.0, 0.6)):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.dx = dx
+        self.dy = dy
+        self.dz = dz
+        self.pos = Position((x, y, z))
+        self.dir = Direction((dx, dy, dz))
+        self.speed = speed
+        self.ts = ts
+        self.te = te
+        self.color = color
+
+    def draw(self, time, line_width=3):
+        if time <= self.ts:
+            return
+        time = time * 1e-9
+
+        pos_start = self.pos
+        path = (self.speed * (time - self.ts * 1e-9) * self.dir)
+        #max_end = self.pos + (self.speed * self.te * self.dir)
+        #if not int(self.te) == 0 and time > self.te:
+        #    pos_end = max_end
+        #else:
+        #    pos_end = self.pos + path
+        pos_end = self.pos + path
+
+        glPushMatrix()
+        glLineWidth(line_width)
+        glColor3f(*self.color)
+        glBegin(GL_LINES)
+        glVertex3f(*pos_start)
+        glVertex3f(*pos_end)
+        glEnd()
+        glPopMatrix()
+
+
 class Hit(object):
     def __init__(self, x, y, z, time, tot=10):
         self.x = x
