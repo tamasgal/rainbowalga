@@ -2,6 +2,7 @@ from __future__ import division, absolute_import, print_function
 
 import numpy as np
 
+from km3pipe import constants
 from km3pipe.dataclasses import Position, Direction
 
 from OpenGL.GL import (glPushMatrix,glLineWidth, glColor3f, glBegin, GL_LINES,
@@ -10,9 +11,41 @@ from OpenGL.GL import (glPushMatrix,glLineWidth, glColor3f, glBegin, GL_LINES,
 from OpenGL.GLUT import glutSolidSphere
 
 
+class Neutrino(object):
+    def __init__(self, x, y, z, dx, dy, dz, time,
+                 color=(1.0, 0.0, 0.0), line_width=3):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.dx = dx
+        self.dy = dy
+        self.dz = dz
+        self.pos = Position((x, y, z))
+        self.dir = Direction((dx, dy, dz))
+        self.start_pos = Position((x, y, z)) - self.dir*1000
+        self.time = time * 1e-9
+        self.color = color
+        self.line_width = line_width
+
+    def draw(self, time, line_width=None):
+        time = time * 1e-9
+
+        pos_start = self.start_pos + (constants.c * (-self.time) * self.dir)
+        path = (constants.c * (time - self.time) * self.dir)
+        pos_end = self.pos + path
+
+        glPushMatrix()
+        glLineWidth(self.line_width)
+        glColor3f(*self.color)
+        glBegin(GL_LINES)
+        glVertex3f(*pos_start)
+        glVertex3f(*pos_end)
+        glEnd()
+        glPopMatrix()
+
 class Particle(object):
     def __init__(self, x, y, z, dx, dy, dz, time, speed,
-                 length=None, color=(1.0, 0.0, 0.6)):
+                 length=0, color=(0.0, 0.5, 0.7), line_width=1):
         self.x = x
         self.y = y
         self.z = z
@@ -25,9 +58,12 @@ class Particle(object):
         self.speed = speed
         self.length = abs(length)
         self.color = color
+        self.line_width = line_width
 
-    def draw(self, time, line_width=2):
+    def draw(self, time, line_width=None):
         time = time * 1e-9
+        if time <= self.time:
+            return
 
         pos_start = self.pos + (self.speed * (-self.time) * self.dir)
         path = (self.speed * (time - self.time) * self.dir)
@@ -38,7 +74,10 @@ class Particle(object):
         pos_end = self.pos + path
 
         glPushMatrix()
-        glLineWidth(line_width)
+        if line_width:
+            glLineWidth(line_width)
+        else:
+            glLineWidth(self.line_width)
         glColor3f(*self.color)
         glBegin(GL_LINES)
         glVertex3f(*pos_start)
@@ -49,7 +88,7 @@ class Particle(object):
 
 class ParticleFit(object):
     def __init__(self, x, y, z, dx, dy, dz, speed, ts, te,
-                 color=(1.0, 1.0, 0.6)):
+                 color=(1.0, 1.0, 0.6), line_width=2):
         self.x = x
         self.y = y
         self.z = z
@@ -62,8 +101,9 @@ class ParticleFit(object):
         self.ts = ts
         self.te = te
         self.color = color
+        self.line_width = line_width
 
-    def draw(self, time, line_width=3):
+    def draw(self, time, line_width=None):
         if time <= self.ts:
             return
         time = time * 1e-9
@@ -78,7 +118,10 @@ class ParticleFit(object):
         pos_end = self.pos + path
 
         glPushMatrix()
-        glLineWidth(line_width)
+        if line_width:
+            glLineWidth(line_width)
+        else:
+            glLineWidth(self.line_width)
         glColor3f(*self.color)
         glBegin(GL_LINES)
         glVertex3f(*pos_start)
