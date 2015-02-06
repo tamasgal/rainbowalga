@@ -30,9 +30,13 @@ class Neutrino(object):
     def draw(self, time, line_width=None):
         time = time * 1e-9
 
+
         pos_start = self.start_pos + (constants.c * (-self.time) * self.dir)
-        path = (constants.c * (time - self.time) * self.dir)
-        pos_end = self.pos + path
+        if time >= self.time:
+            pos_end = self.pos
+        else:
+            path = (constants.c * (time - self.time) * self.dir)
+            pos_end = self.pos + path
 
         glPushMatrix()
         glLineWidth(self.line_width)
