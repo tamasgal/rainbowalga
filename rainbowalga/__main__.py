@@ -168,6 +168,22 @@ class RainbowAlga(object):
                   "amount of hits, according to your graphic cards "
                   "performance!")
 
+        pmt_hit_map = {}
+        for hit in hits:
+            pmt_hit_map.setdefault(hit.pmt_id, []).append(hit)
+        hits = []
+        for pmt_id, pmt_hits in pmt_hit_map.iteritems():
+            last_hit = None
+            for hit in pmt_hits:
+                if last_hit:
+                    if hit.tot > last_hit.tot:
+                        hits.append(hit)
+                else:
+                    hits.append(hit)
+                last_hit = hit
+        print("Number of hits after removing hidden ones: {0}".format(len(hits)))
+
+
         hit_times = []
         #step_size = int(len(hits) / 100) + 1
         for hit in hits:
