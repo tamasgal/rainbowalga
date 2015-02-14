@@ -18,6 +18,7 @@ setup(name='rainbowalga',
           'Pillow',
           'PyOpenGL',
           'freetype-py',
+          'matplotlib',
       ],
       entry_points={
           'console_scripts': [

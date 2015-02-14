@@ -54,6 +54,7 @@ from OpenGL.GL.shaders import compileShader, compileProgram
 
 
 import numpy as np
+import pylab
 
 from PIL import Image
 
@@ -129,6 +130,7 @@ class RainbowAlga(object):
         self.show_info = True
 
         self.spectrum = None
+        self.cmap = pylab.get_cmap("gist_rainbow")
 
         self.detector = Detector(detector_file)
         dom_positions = self.detector.dom_positions
@@ -196,8 +198,11 @@ class RainbowAlga(object):
             max_time = max(hit_times)
             diff = max_time - min_time
             one_percent = diff/100
-            progress = (time - min_time) / one_percent / 100
-            return (1-progress, 0, progress)
+            try:
+                progress = (time - min_time) / one_percent / 100
+            except ZeroDivisionError:
+                progress = 0
+            return tuple(self.cmap(progress))[:3]
         self.spectrum = spectrum
 
     def add_neutrino(self, blob):

@@ -4,3 +4,4 @@ freetype-py
 numpy
 km3pipe
 docopt
+matplotlib
