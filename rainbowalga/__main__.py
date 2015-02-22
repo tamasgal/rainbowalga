@@ -14,6 +14,7 @@ Options:
     -v --version       Show version.
     -d FILE            Detector file (DETX).
     -t MIN_TOT         ToT threshold in ns [default=30].
+    -s INDEX           Skip to event at index [default=0].
 
 """
 from __future__ import division, absolute_import, print_function
@@ -70,7 +71,8 @@ from km3pipe.pumps import EvtPump
 
 class RainbowAlga(object):
     def __init__(self, detector_file=None, event_file=None, min_tot=None,
-                 width=800, height=600, x=112, y=84):
+                 skip_to_blob=0,
+                 width=1000, height=700, x=50, y=50):
         self.camera = Camera()
         self.camera.is_rotating = True
 
@@ -92,7 +94,7 @@ class RainbowAlga(object):
         self.clock = Clock(speed=100)
         self.timer = Clock(snooze_interval=1/30)
         self.frame_index = 0
-        self.event_index = 0
+        self.event_index = skip_to_blob
         self.is_recording = False
         self.min_tot = min_tot
 
@@ -142,7 +144,12 @@ class RainbowAlga(object):
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
         self.pump = EvtPump(filename=event_file)
-        self.load_blob(0)
+        try:
+            self.load_blob(skip_to_blob)
+        except IndexError:
+            print("Could not load blob at index {0}".format(skip_to_blob))
+            print("Starting from the first one...")
+            self.load_blob(0)
 
         self.clock.reset()
         self.timer.reset()
@@ -228,12 +235,19 @@ class RainbowAlga(object):
             return
 
         highest_energetic_track = max(track_ins, key=lambda t: t.E)
+        highest_energy = highest_energetic_track.E
         for track in track_ins:
+            if track.particle_type in (0, 22):
+                # skip unknowns, photons
+                continue
+            if track.particle_type not in (-11, 11, -13, 13, -15, 15):
+                # TODO: make this realistic!
+                track.length = 200 * track.E / highest_energy
             particle = Particle(track.pos.x, track.pos.y, track.pos.z + 405.93,
                                 track.dir.x, track.dir.y, track.dir.z,
                                 track.time, constants.c, track.length)
             if track.id == highest_energetic_track.id:
-                particle.color = (0.0, 0.0, 1.0)
+                particle.color = (0.0, 1.0, 0.2)
                 particle.line_width = 3
             self.objects.append(particle)
 
@@ -564,7 +578,12 @@ def main():
         min_tot = float(arguments['-t'])
     except TypeError:
         min_tot = 30 
-    app = RainbowAlga(detector_file, event_file, min_tot)
+    try:
+        skip_to_blob = int(arguments['-s'])
+    except TypeError:
+        skip_to_blob = 0 
+    app = RainbowAlga(detector_file, event_file, min_tot, skip_to_blob)
+    
 
  
 
