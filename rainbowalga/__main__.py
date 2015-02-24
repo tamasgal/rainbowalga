@@ -177,11 +177,11 @@ class RainbowAlga(object):
                   "amount of hits, according to your graphic cards "
                   "performance!")
 
-        pmt_hit_map = {}
+        om_hit_map = {}
         for hit in hits:
-            pmt_hit_map.setdefault(hit.pmt_id, []).append(hit)
+            om_hit_map.setdefault(self.detector.pmtid2omkey(hit.pmt_id)[:1], []).append(hit)
         hits = []
-        for pmt_id, pmt_hits in pmt_hit_map.iteritems():
+        for om, pmt_hits in om_hit_map.iteritems():
             last_hit = None
             for hit in pmt_hits:
                 if last_hit:
