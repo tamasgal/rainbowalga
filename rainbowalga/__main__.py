@@ -167,6 +167,7 @@ class RainbowAlga(object):
         self.add_reco_tracks(blob)
 
         hits = blob['EvtRawHits']
+        hits.sort(key=lambda h: h.time)
         print("Number of hits: {0}".format(len(hits)))
         if self.min_tot:
             hits = [hit for hit in blob['EvtRawHits'] if hit.tot >= self.min_tot]
@@ -179,17 +180,25 @@ class RainbowAlga(object):
 
         om_hit_map = {}
         for hit in hits:
-            om_hit_map.setdefault(self.detector.pmtid2omkey(hit.pmt_id)[:1], []).append(hit)
+            x, y, z = self.detector.pmt_with_id(hit.pmt_id).pos
+            rb_hit = Hit(x, y, z, hit.time, hit.pmt_id, hit.id, hit.tot)
+            om_hit_map.setdefault(self.detector.pmtid2omkey(hit.pmt_id)[:2], []).append(rb_hit)
+
         hits = []
-        for om, pmt_hits in om_hit_map.iteritems():
-            last_hit = None
-            for hit in pmt_hits:
-                if last_hit:
-                    if hit.tot > last_hit.tot:
+        for om, om_hits in om_hit_map.iteritems():
+            largest_hit = None
+            for hit in om_hits:
+                if largest_hit:
+                    if hit.tot > largest_hit.tot:
+                        hidden_hits = om_hits[:om_hits.index(hit)]
+                        hit.replaces_hits = hidden_hits
                         hits.append(hit)
+                        self.shaded_objects.append(hit)
+                        largest_hit = hit
                 else:
                     hits.append(hit)
-                last_hit = hit
+                    self.shaded_objects.append(hit)
+                    largest_hit = hit
         print("Number of hits after removing hidden ones: {0}".format(len(hits)))
 
 
@@ -197,8 +206,6 @@ class RainbowAlga(object):
         #step_size = int(len(hits) / 100) + 1
         for hit in hits:
             hit_times.append(hit.time)
-            x, y, z = self.detector.pmt_with_id(hit.pmt_id).pos
-            self.shaded_objects.append(Hit(x, y, z, hit.time, hit.tot))
 
         def spectrum(time):
             min_time = min(hit_times)

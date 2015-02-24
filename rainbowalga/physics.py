@@ -135,16 +135,34 @@ class ParticleFit(object):
 
 
 class Hit(object):
-    def __init__(self, x, y, z, time, tot=10):
+    def __init__(self, x, y, z, time, pmt_id, hit_id, tot=10, replaces_hits=None):
         self.x = x
         self.y = y
         self.z = z
         self.time = time
         self.tot = tot
+        self.hidden = False
+        self.replaces_hits = replaces_hits
+
+    def _hide_replaced_hits(self):
+        if self.replaces_hits:
+            for hit in self.replaces_hits:
+                hit.hidden = True
+
+    def _show_replaced_hits(self):
+        if self.replaces_hits:
+            for hit in self.replaces_hits:
+                hit.hidden = False
 
     def draw(self, time, spectrum):
-        if time < self.time:
+        if self.hidden:
             return
+        if time < self.time:
+            self._show_replaced_hits()
+            return
+
+        self._hide_replaced_hits()
+
         #color = (1.0, 1.0-self.time/2000.0, self.time/2000.0)
         color = spectrum(self.time)
         glPushMatrix()
