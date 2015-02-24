@@ -205,7 +205,8 @@ class RainbowAlga(object):
         hit_times = []
         #step_size = int(len(hits) / 100) + 1
         for hit in hits:
-            hit_times.append(hit.time)
+            if hit.time > 0:
+                hit_times.append(hit.time)
 
         def spectrum(time):
             min_time = min(hit_times)
