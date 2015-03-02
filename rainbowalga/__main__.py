@@ -22,6 +22,7 @@ from __future__ import division, absolute_import, print_function
 import time
 import pickle
 import os
+import math
 
 from OpenGL.GLUT import (glutCreateWindow, glutDisplayFunc, glutIdleFunc,
                          glutInit, glutInitDisplayMode, glutInitWindowPosition,
@@ -440,8 +441,8 @@ class RainbowAlga(object):
         right_x = width - 10
         min_y = menubar_height + 5
         max_y = height - 20
-        time_step_size = 1000
-        hit_times = list(range(0, int(self.max_hit_time), time_step_size))
+        time_step_size = math.ceil(self.max_hit_time / 20 / 50) * 50
+        hit_times = list(range(0, int(self.max_hit_time), int(time_step_size)))
         segment_height = int((max_y - min_y) / len(hit_times))
         for hit_time in hit_times:
             segment_nr = hit_times.index(hit_time)
