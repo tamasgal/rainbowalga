@@ -49,7 +49,7 @@ from OpenGL.GL import (glBegin, glClear, glClearColor, glClearDepth, glColor3f,
                        GL_VERSION, GL_VERTEX_SHADER, GL_FRAGMENT_SHADER,
                        GL_VERTEX_ARRAY, GL_POINTS, GL_DEPTH_TEST,
                        GL_LINE_SMOOTH, GL_FLAT, GL_MODELVIEW, GL_CULL_FACE,
-                       GL_QUADS, GL_RGB, GL_UNSIGNED_BYTE)
+                       GL_QUADS, GL_RGB, GL_UNSIGNED_BYTE, GL_SMOOTH)
 from OpenGL.arrays import vbo
 from OpenGL.GL.shaders import compileShader, compileProgram
 
@@ -133,6 +133,8 @@ class RainbowAlga(object):
 
         self.spectrum = None
         self.cmap = pylab.get_cmap("gist_rainbow")
+        self.min_hit_time = None
+        self.max_hit_time = None
 
         self.detector = Detector(detector_file)
         dom_positions = self.detector.dom_positions
@@ -207,6 +209,9 @@ class RainbowAlga(object):
         for hit in hits:
             if hit.time > 0:
                 hit_times.append(hit.time)
+
+        self.min_hit_time = min(hit_times)
+        self.max_hit_time = max(hit_times)
 
         def spectrum(time):
             min_time = min(hit_times)
@@ -400,6 +405,7 @@ class RainbowAlga(object):
         logo = self.logo
         logo_bytes = self.logo_bytes
 
+        
         menubar_height = logo.size[1] + 4
         width = glutGet(GLUT_WINDOW_WIDTH)
         height = glutGet(GLUT_WINDOW_HEIGHT)
@@ -409,16 +415,43 @@ class RainbowAlga(object):
         glOrtho(0.0, width, height, 0.0, -1.0, 10.0)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        glDisable(GL_CULL_FACE)
+        #glDisable(GL_CULL_FACE)
+        glShadeModel(GL_SMOOTH)
 
         glClear(GL_DEPTH_BUFFER_BIT)
 
+        # Top bar
         glBegin(GL_QUADS)
         glColor3f(0.14, 0.49, 0.87)
         glVertex2f(0, 0)
         glVertex2f(width - logo.size[0] - 10, 0)
         glVertex2f(width - logo.size[0] - 10, menubar_height)
         glVertex2f(0, menubar_height)
+        glEnd()
+
+
+        # Colour legend
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
+        glDisable(GL_LIGHTING);
+        glBegin(GL_QUADS)
+
+        left_x = width - 20
+        right_x = width - 10
+        min_y = menubar_height + 5
+        max_y = height - 20
+        time_step_size = 1000
+        hit_times = list(range(0, int(self.max_hit_time), time_step_size))
+        segment_height = int((max_y - min_y) / len(hit_times))
+        for hit_time in hit_times:
+            segment_nr = hit_times.index(hit_time)
+            glColor3f(*self.spectrum(hit_time))
+            glVertex2f(left_x, max_y - segment_height * segment_nr)
+            glVertex2f(right_x, max_y - segment_height * segment_nr)
+            glColor3f(*self.spectrum(hit_time + time_step_size))
+            glVertex2f(left_x, max_y - segment_height * (segment_nr + 1))
+            glVertex2f(right_x, max_y - segment_height * (segment_nr + 1))
+
         glEnd()
 
         glPushMatrix()
@@ -432,6 +465,14 @@ class RainbowAlga(object):
         glMatrixMode(GL_MODELVIEW)
 
         glColor3f(1.0, 1.0, 1.0)
+
+        # Colour legend labels
+        for hit_time in hit_times:
+            segment_nr = hit_times.index(hit_time)
+            draw_text_2d("{0:>5}ns".format(hit_time), width - 80, (height - max_y) + segment_height * segment_nr)
+        #draw_text_2d("{0}ns".format(int(self.min_hit_time)), width - 80, 20)
+        #draw_text_2d("{0}ns".format(int(self.max_hit_time)), width - 80, height - menubar_height - 10)
+        #draw_text_2d("{0}ns".format(int((self.min_hit_time + self.max_hit_time) / 2)), width - 80, int(height/2))
 
         draw_text_2d("FPS:  {0:.1f}\nTime: {1:.0f} ns"
                      .format(self.clock.fps, self.clock.time),
