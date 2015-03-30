@@ -69,6 +69,9 @@ from km3pipe.dataclasses import Position
 from km3pipe.hardware import Detector
 from km3pipe.pumps import EvtPump
 
+from km3pipe.logger import logging
+log = logging.getLogger('rainbowalga')  # pylint: disable=C0103
+
 
 class RainbowAlga(object):
     def __init__(self, detector_file=None, event_file=None, min_tot=None,
@@ -210,6 +213,10 @@ class RainbowAlga(object):
         for hit in hits:
             if hit.time > 0:
                 hit_times.append(hit.time)
+
+        if len(hit_times) == 0:
+            log.warn("No hits left after applying cuts.")
+            return
 
         self.min_hit_time = min(hit_times)
         self.max_hit_time = max(hit_times)
