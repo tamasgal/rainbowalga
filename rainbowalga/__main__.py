@@ -240,9 +240,7 @@ class RainbowAlga(object):
         except KeyError:
             return
         print(neutrino)
-        # z correctio due to gen/km3 (ZED -> sea level shift)
-        # http://wiki.km3net.physik.uni-erlangen.de/index.php/Simulations
-        pos = Position((neutrino.pos.x, neutrino.pos.y, neutrino.pos.z + 405.93))
+        pos = Position((neutrino.pos.x, neutrino.pos.y, neutrino.pos.z))
         particle = Neutrino(pos.x, pos.y, pos.z,
                             neutrino.dir.x, neutrino.dir.y, neutrino.dir.z,
                             0)
@@ -266,9 +264,7 @@ class RainbowAlga(object):
             if track.particle_type not in (-11, 11, -13, 13, -15, 15):
                 # TODO: make this realistic!
                 track.length = 200 * track.E / highest_energy
-            # z correctio due to gen/km3 (ZED -> sea level shift)
-            # http://wiki.km3net.physik.uni-erlangen.de/index.php/Simulations
-            particle = Particle(track.pos.x, track.pos.y, track.pos.z + 405.93,
+            particle = Particle(track.pos.x, track.pos.y, track.pos.z,
                                 track.dir.x, track.dir.y, track.dir.z,
                                 track.time, constants.c, track.length)
             if track.id == highest_energetic_track.id:
@@ -285,8 +281,7 @@ class RainbowAlga(object):
         for track in track_fits:
             if not int(track.id) == 314:
                 continue
-            particle = ParticleFit(track.pos.x, track.pos.y,
-                                   track.pos.z + 405.93,
+            particle = ParticleFit(track.pos.x, track.pos.y, track.pos.z,
                                    track.dir.x, track.dir.y, track.dir.z,
                                    constants.c, track.ts, track.te)
             print("Found track fit: {0}".format(track))
