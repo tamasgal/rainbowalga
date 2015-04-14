@@ -240,6 +240,8 @@ class RainbowAlga(object):
         except KeyError:
             return
         print(neutrino)
+        # z correctio due to gen/km3 (ZED -> sea level shift)
+        # http://wiki.km3net.physik.uni-erlangen.de/index.php/Simulations
         pos = Position((neutrino.pos.x, neutrino.pos.y, neutrino.pos.z + 405.93))
         particle = Neutrino(pos.x, pos.y, pos.z,
                             neutrino.dir.x, neutrino.dir.y, neutrino.dir.z,
@@ -264,6 +266,8 @@ class RainbowAlga(object):
             if track.particle_type not in (-11, 11, -13, 13, -15, 15):
                 # TODO: make this realistic!
                 track.length = 200 * track.E / highest_energy
+            # z correctio due to gen/km3 (ZED -> sea level shift)
+            # http://wiki.km3net.physik.uni-erlangen.de/index.php/Simulations
             particle = Particle(track.pos.x, track.pos.y, track.pos.z + 405.93,
                                 track.dir.x, track.dir.y, track.dir.z,
                                 track.time, constants.c, track.length)
