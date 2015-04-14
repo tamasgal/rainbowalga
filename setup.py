@@ -14,7 +14,7 @@ setup(name='rainbowalga',
       install_requires=[
           'numpy',
           'docopt',
-          'km3pipe>=0.6.9',
+          'km3pipe>=0.7.0',
           'Pillow',
           'PyOpenGL',
           'freetype-py',
