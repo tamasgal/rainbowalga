@@ -1,5 +1,5 @@
 # coding=utf-8
-# Filename: app.py
+# Filename: __main__.py
 """
 RainbowAlga
 
@@ -62,6 +62,7 @@ from PIL import Image
 
 from rainbowalga.tools import Clock, Camera, draw_text_2d, draw_text_3d
 from rainbowalga.physics import Particle, ParticleFit, Neutrino, Hit
+from rainbowalga.gui import Colourist
 from rainbowalga import constants
 from rainbowalga import version
 
@@ -80,17 +81,15 @@ class RainbowAlga(object):
         self.camera = Camera()
         self.camera.is_rotating = True
 
+        self.colourist = Colourist()
+
         current_path = os.path.dirname(os.path.abspath(__file__))
 
         if not detector_file:
             detector_file = os.path.join(current_path,
                                          'data/km3net_jul13_90m_r1494.detx')
 
-        image_path = os.path.join(current_path, 'images/km3net_logo.bmp')
-        self.logo = Image.open(image_path)
-        # Create a raw string from the image data - data will be unsigned bytes
-        # RGBpad, no stride (0), and first line is top of image (-1)
-        self.logo_bytes = self.logo.tobytes("raw", "RGB", 0, -1)
+        self.load_logo()
 
         self.init_opengl(width=width, height=height, x=x, y=y)
 
@@ -108,7 +107,7 @@ class RainbowAlga(object):
         }""", GL_VERTEX_SHADER)
         FRAGMENT_SHADER = compileShader("""
         void main() {
-            gl_FragColor = vec4(0.8, 0.8, 0.8, 1);
+            gl_FragColor = vec4(0.5, 0.5, 0.5, 1);
         }""", GL_FRAGMENT_SHADER)
 
         self.shader = compileProgram(VERTEX_SHADER, FRAGMENT_SHADER)
@@ -160,6 +159,20 @@ class RainbowAlga(object):
         self.clock.reset()
         self.timer.reset()
         glutMainLoop()
+
+    def load_logo(self):
+        if self.colourist.print_mode:
+            image = 'images/km3net_logo_print.bmp'
+        else:
+            image = 'images/km3net_logo.bmp'
+
+        current_path = os.path.dirname(os.path.abspath(__file__))
+        
+        image_path = os.path.join(current_path, image)
+        self.logo = Image.open(image_path)
+        # Create a raw string from the image data - data will be unsigned bytes
+        # RGBpad, no stride (0), and first line is top of image (-1)
+        self.logo_bytes = self.logo.tobytes("raw", "RGB", 0, -1)
 
     def load_blob(self, index=0):
         print("Loading blob {0}...".format(index))
@@ -366,7 +379,8 @@ class RainbowAlga(object):
             self.timer.snooze()
 
 
-        glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        self.colourist.now_background()
 
         if self.camera.is_rotating:
             self.camera.rotate_z(0.2)
@@ -428,13 +442,13 @@ class RainbowAlga(object):
         glClear(GL_DEPTH_BUFFER_BIT)
 
         # Top bar
-        glBegin(GL_QUADS)
-        glColor3f(0.14, 0.49, 0.87)
-        glVertex2f(0, 0)
-        glVertex2f(width - logo.size[0] - 10, 0)
-        glVertex2f(width - logo.size[0] - 10, menubar_height)
-        glVertex2f(0, menubar_height)
-        glEnd()
+        #glBegin(GL_QUADS)
+        #glColor3f(0.14, 0.49, 0.87)
+        #glVertex2f(0, 0)
+        #glVertex2f(width - logo.size[0] - 10, 0)
+        #glVertex2f(width - logo.size[0] - 10, menubar_height)
+        #glVertex2f(0, menubar_height)
+        #glEnd()
 
 
         # Colour legend
@@ -463,7 +477,7 @@ class RainbowAlga(object):
 
         glPushMatrix()
         glLoadIdentity()
-        glRasterPos(width - logo.size[0] - 4, logo.size[1] + 2)
+        glRasterPos(4, logo.size[1] + 4)
         glDrawPixels(logo.size[0], logo.size[1], GL_RGB, GL_UNSIGNED_BYTE, logo_bytes)
         glPopMatrix()
 
@@ -471,7 +485,7 @@ class RainbowAlga(object):
         glPopMatrix()
         glMatrixMode(GL_MODELVIEW)
 
-        glColor3f(1.0, 1.0, 1.0)
+        self.colourist.now_text()
 
         # Colour legend labels
         for hit_time in hit_times:
@@ -538,6 +552,10 @@ class RainbowAlga(object):
         if(key == 'p'):
             self.load_previous_blob()
 
+        if(key == 'm'):
+            self.colourist.print_mode = not self.colourist.print_mode
+            self.load_logo()
+
         if(key == "s"):
             self.save_screenshot()
 
@@ -585,6 +603,7 @@ class RainbowAlga(object):
                 'p': 'previous event',
                 'LEFT': '+100ns',
                 'RIGHT': '-100ns',
+                'm': 'switch between screen/print mode',
                 's': 'save screenshot (screenshot.png)',
                 'v': 'start/stop recording (Frame_XXXXX.jpg)',
                 'r': 'reset time',

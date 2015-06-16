@@ -28,7 +28,6 @@ class Detector(object):
             glPushMatrix()
             glTranslated(position[0], position[1], 0)
             glLineWidth(line_width)
-            glColor3f(1.0, 1.0, 1.0)
             glBegin(GL_LINES)
             glVertex3f(0.0, 0.0, self.z_min)
             glVertex3f(0.0, 0.0, self.z_max)
