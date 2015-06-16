@@ -89,11 +89,7 @@ class RainbowAlga(object):
             detector_file = os.path.join(current_path,
                                          'data/km3net_jul13_90m_r1494.detx')
 
-        image_path = os.path.join(current_path, 'images/km3net_logo_print.bmp')
-        self.logo = Image.open(image_path)
-        # Create a raw string from the image data - data will be unsigned bytes
-        # RGBpad, no stride (0), and first line is top of image (-1)
-        self.logo_bytes = self.logo.tobytes("raw", "RGB", 0, -1)
+        self.load_logo()
 
         self.init_opengl(width=width, height=height, x=x, y=y)
 
@@ -163,6 +159,20 @@ class RainbowAlga(object):
         self.clock.reset()
         self.timer.reset()
         glutMainLoop()
+
+    def load_logo(self):
+        if self.colourist.print_mode:
+            image = 'images/km3net_logo_print.bmp'
+        else:
+            image = 'images/km3net_logo.bmp'
+
+        current_path = os.path.dirname(os.path.abspath(__file__))
+        
+        image_path = os.path.join(current_path, image)
+        self.logo = Image.open(image_path)
+        # Create a raw string from the image data - data will be unsigned bytes
+        # RGBpad, no stride (0), and first line is top of image (-1)
+        self.logo_bytes = self.logo.tobytes("raw", "RGB", 0, -1)
 
     def load_blob(self, index=0):
         print("Loading blob {0}...".format(index))
@@ -467,7 +477,7 @@ class RainbowAlga(object):
 
         glPushMatrix()
         glLoadIdentity()
-        glRasterPos(width - logo.size[0] - 4, logo.size[1] + 2)
+        glRasterPos(4, logo.size[1] + 4)
         glDrawPixels(logo.size[0], logo.size[1], GL_RGB, GL_UNSIGNED_BYTE, logo_bytes)
         glPopMatrix()
 
@@ -544,7 +554,7 @@ class RainbowAlga(object):
 
         if(key == 'm'):
             self.colourist.print_mode = not self.colourist.print_mode
-            print("Toggle between print/screen colour mode")
+            self.load_logo()
 
         if(key == "s"):
             self.save_screenshot()
