@@ -172,7 +172,7 @@ class CoordinateSystem(object):
         glPopMatrix()
         glPopMatrix()
 
-def draw_text_2d(text, x, y, line_height=17, color=(1.0, 1.0, 1.0)):
+def draw_text_2d(text, x, y, line_height=17, color=None):
     """Draw a text at a given 2D position.
     
     A very basic 2D drawing function for drawing (multi-line) text."
@@ -187,7 +187,8 @@ def draw_text_2d(text, x, y, line_height=17, color=(1.0, 1.0, 1.0)):
     glMatrixMode(GL_MODELVIEW)
     glPushMatrix()
     glLoadIdentity()
-    glColor3f(*color)    
+    if color:
+        glColor3f(*color)    
     glRasterPos2i(x, y)
     lines = 0
     for character in text:
@@ -201,13 +202,14 @@ def draw_text_2d(text, x, y, line_height=17, color=(1.0, 1.0, 1.0)):
     glPopMatrix() #glLoadMatrixd(matrix)
     glMatrixMode(GL_MODELVIEW)
 
-def draw_text_3d(text, x, y, z, color=(1.0, 1.0, 1.0)):
+def draw_text_3d(text, x, y, z, color=None):
     """Draw a text at a given 3D position.
     
     A very basic 3D drawing function for displaying text in a 3D scene.
     The multi-line support is experimental.
     """
-    glColor3f(*color)    
+    if color:
+        glColor3f(*color)    
     glRasterPos(x, y, z)
     for character in text:
         if character == '\n':
