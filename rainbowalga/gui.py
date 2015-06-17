@@ -10,9 +10,17 @@ from OpenGL.GL import glColor3f, glClearColor
 
 
 class Colourist(object):
-    """Takes care of the colours in OpenGL"""
+    """Takes care of the colours in OpenGL. (Singleton)"""
+    _instance = None
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(Colourist, cls).__new__(
+                                cls, *args, **kwargs)
+        return cls._instance
+
     def __init__(self):
         self.print_mode = False 
+        self.cherenkov_cone_enabled = False
         pass
 
     def now_text(self):
