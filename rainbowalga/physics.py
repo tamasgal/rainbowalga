@@ -6,10 +6,13 @@ from km3pipe import constants
 from km3pipe.dataclasses import Position, Direction
 
 from OpenGL.GL import (glPushMatrix,glLineWidth, glColor3f, glBegin, GL_LINES,
-                       glEnd, glVertex3f, glPushMatrix, glPopMatrix,
-                       glTranslated)
-from OpenGL.GLUT import glutSolidSphere
+                       glEnd, glVertex3f, glPushMatrix, glPopMatrix, glEnable,
+                       glTranslated, glRotated, GL_FLAT, GL_DEPTH_TEST,
+                       glShadeModel, glDisable, GL_LIGHTING, glMultMatrixf,
+                       glColor4f)
+from OpenGL.GLUT import glutSolidSphere, glutSolidCone
 
+from rainbowalga.gui import Colourist
 
 class Neutrino(object):
     def __init__(self, x, y, z, dx, dy, dz, time,
@@ -49,7 +52,8 @@ class Neutrino(object):
 
 class Particle(object):
     def __init__(self, x, y, z, dx, dy, dz, time, speed,
-                 length=0, color=(0.0, 0.5, 0.7), line_width=1):
+                 length=0, color=(0.0, 0.5, 0.7), line_width=1,
+                 cherenkov_cone_enabled=False):
         self.x = x
         self.y = y
         self.z = z
@@ -63,6 +67,8 @@ class Particle(object):
         self.length = abs(length)
         self.color = color
         self.line_width = line_width
+        self.cherenkov_cone_enabled = cherenkov_cone_enabled
+        self.colourist = Colourist()
 
     def draw(self, time, line_width=None):
         time = time * 1e-9
@@ -77,6 +83,8 @@ class Particle(object):
                 path = max_path
         pos_end = self.pos + path
 
+
+
         glPushMatrix()
         if line_width:
             glLineWidth(line_width)
@@ -88,6 +96,30 @@ class Particle(object):
         glVertex3f(*pos_end)
         glEnd()
         glPopMatrix()
+
+        if self.cherenkov_cone_enabled and \
+                self.colourist.cherenkov_cone_enabled:
+
+            height = np.linalg.norm(pos_end - pos_start)
+            position = pos_end - self.dir * height
+
+            glEnable(GL_LIGHTING)
+            glEnable(GL_DEPTH_TEST)
+            glShadeModel(GL_FLAT)
+            glColor4f(0.0, 0.0, 0.8, 0.3)
+
+            glPushMatrix()
+            glTranslated(*position)
+            glPushMatrix()
+
+            v = np.array(self.dir)
+            glMultMatrixf(transform(v))
+
+            glutSolidCone(0.6691*height, height, 128, 64)
+            glPopMatrix()
+            glPopMatrix()
+            
+            glDisable(GL_LIGHTING)
 
 
 class ParticleFit(object):
@@ -176,3 +208,27 @@ class Hit(object):
 
 
         glPopMatrix()
+
+
+def normalize(v):
+    norm = np.linalg.norm(v)
+    if norm > 1.0e-8:  # arbitrarily small
+        return v/norm
+    else:
+        return v
+
+def transform(v):
+    bz = normalize(v)
+    if (abs(v[2]) < abs(v[0])) and (abs(v[2]) < abs(v[1])):
+        by = normalize(np.array([v[1], -v[0], 0]))
+    else:
+        by = normalize(np.array([v[2], 0, -v[0]]))
+        #~ by = normalize(np.array([0, v[2], -v[1]]))
+
+    bx = np.cross(by, bz)
+    R =  np.array([[bx[0], by[0], bz[0], 0],
+                   [bx[1], by[1], bz[1], 0],
+                   [bx[2], by[2], bz[2], 0],
+                   [0,     0,     0,     1]], dtype=np.float32)
+
+    return R.T
