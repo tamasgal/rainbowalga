@@ -42,7 +42,7 @@ from OpenGL.GL import (glBegin, glClear, glClearColor, glClearDepth, glColor3f,
                        glMatrixMode, glOrtho, glPointSize, glPopMatrix,
                        glPushMatrix, glRasterPos, glReadPixels, glShadeModel,
                        glUseProgram, glVertex2f, glVertexPointerf, glViewport,
-                       glGetString, GLubyte,
+                       glGetString, GLubyte, glBlendFunc,
                        GL_PROJECTION, GL_DEPTH_BUFFER_BIT,
                        GL_COLOR_BUFFER_BIT, GL_LIGHT0, GL_NORMALIZE,
                        GL_COLOR_MATERIAL, GL_LIGHTING, GL_AMBIENT, GL_DIFFUSE,
@@ -50,7 +50,8 @@ from OpenGL.GL import (glBegin, glClear, glClearColor, glClearDepth, glColor3f,
                        GL_VERSION, GL_VERTEX_SHADER, GL_FRAGMENT_SHADER,
                        GL_VERTEX_ARRAY, GL_POINTS, GL_DEPTH_TEST,
                        GL_LINE_SMOOTH, GL_FLAT, GL_MODELVIEW, GL_CULL_FACE,
-                       GL_QUADS, GL_RGB, GL_UNSIGNED_BYTE, GL_SMOOTH)
+                       GL_QUADS, GL_RGB, GL_UNSIGNED_BYTE, GL_SMOOTH,
+                       GL_BLEND, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 from OpenGL.arrays import vbo
 from OpenGL.GL.shaders import compileShader, compileProgram
 
@@ -283,6 +284,7 @@ class RainbowAlga(object):
             if track.id == highest_energetic_track.id:
                 particle.color = (0.0, 1.0, 0.2)
                 particle.line_width = 3
+                particle.cherenkov_cone_enabled = True
             self.objects.append(particle)
 
     def add_reco_tracks(self, blob):
@@ -367,6 +369,10 @@ class RainbowAlga(object):
         glMaterialfv(GL_FRONT, GL_DIFFUSE,   mat_diffuse)
         glMaterialfv(GL_FRONT, GL_SPECULAR,  mat_specular)
         glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess)
+
+        # Transparency
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
     def render(self):
@@ -556,6 +562,10 @@ class RainbowAlga(object):
             self.colourist.print_mode = not self.colourist.print_mode
             self.load_logo()
 
+        if(key == 'c'):
+            self.colourist.cherenkov_cone_enabled = \
+                not self.colourist.cherenkov_cone_enabled 
+
         if(key == "s"):
             self.save_screenshot()
 
@@ -603,6 +613,7 @@ class RainbowAlga(object):
                 'p': 'previous event',
                 'LEFT': '+100ns',
                 'RIGHT': '-100ns',
+                'c': 'enable/disable Cherenkov cone',
                 'm': 'switch between screen/print mode',
                 's': 'save screenshot (screenshot.png)',
                 'v': 'start/stop recording (Frame_XXXXX.jpg)',
