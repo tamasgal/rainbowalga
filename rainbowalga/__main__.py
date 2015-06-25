@@ -562,6 +562,9 @@ class RainbowAlga(object):
             self.colourist.print_mode = not self.colourist.print_mode
             self.load_logo()
 
+        if(key == 'a'):
+            self.camera.is_rotating = not self.camera.is_rotating
+
         if(key == 'c'):
             self.colourist.cherenkov_cone_enabled = \
                 not self.colourist.cherenkov_cone_enabled 
@@ -613,6 +616,7 @@ class RainbowAlga(object):
                 'p': 'previous event',
                 'LEFT': '+100ns',
                 'RIGHT': '-100ns',
+                'a': 'enable/disable rotation animation',
                 'c': 'enable/disable Cherenkov cone',
                 'm': 'switch between screen/print mode',
                 's': 'save screenshot (screenshot.png)',
