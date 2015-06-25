@@ -173,7 +173,9 @@ class Hit(object):
         self.z = z
         self.time = time
         self.tot = tot
+        self.pmt_id = pmt_id
         self.hidden = False
+        self.t_cherenkov = None
         self.replaces_hits = replaces_hits
 
     def _hide_replaced_hits(self):
@@ -196,7 +198,7 @@ class Hit(object):
         self._hide_replaced_hits()
 
         #color = (1.0, 1.0-self.time/2000.0, self.time/2000.0)
-        color = spectrum(self.time)
+        color = spectrum(self.time, self)
         glPushMatrix()
         glTranslated(self.x, self.y, self.z)
 
