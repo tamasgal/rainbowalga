@@ -61,7 +61,7 @@ import pylab
 
 from PIL import Image
 
-from rainbowalga.tools import Clock, Camera, draw_text_2d, draw_text_3d
+from rainbowalga.tools import Clock, Camera, draw_text_2d
 from rainbowalga.physics import Particle, ParticleFit, Neutrino, Hit
 from rainbowalga.gui import Colourist
 from rainbowalga import constants
@@ -70,6 +70,7 @@ from rainbowalga import version
 from km3pipe.dataclasses import Position
 from km3pipe.hardware import Detector
 from km3pipe.pumps import EvtPump
+from km3pipe.tools import pdg2name
 from km3pipe import constants
 
 from km3pipe.logger import logging
@@ -127,6 +128,7 @@ class RainbowAlga(object):
         self.show_info = True
 
         self.spectrum = None
+        self.current_spectrum = 'default'
         self.cmap = pylab.get_cmap("gist_rainbow")
         self.min_hit_time = None
         self.max_hit_time = None
@@ -177,10 +179,11 @@ class RainbowAlga(object):
         self.add_mc_tracks(blob)
         self.add_reco_tracks(blob)
 
-        self.initialise_spectrum(blob)
+        self.initialise_spectrum(blob, style=self.current_spectrum)
 
-    def initialise_spectrum(self, blob, style="time_residual"):
-        if not style:
+    def initialise_spectrum(self, blob, style="default"):
+
+        if style == 'default':
             hits = self.extract_hits(blob)
             hits = self.remove_hidden_hits(hits)
 
@@ -209,17 +212,24 @@ class RainbowAlga(object):
                 return tuple(self.cmap(progress))[:3]
             self.spectrum = spectrum
 
-        if style == 'time_residual':
-            hits = self.extract_hits(blob)
-            hits = self.first_om_hits(hits)
+        if style == 'time_residuals':
             try:
                 track_ins = blob['TrackIns']
             except KeyError:
                 log.error("No tracks found to determine Cherenkov parameters!")
-                self.initialise_spectrum(style=None)
-            highest_energetic_track = max(track_ins, key=lambda t: t.E)
-            vertex_pos = highest_energetic_track.pos
-            muon_dir = highest_energetic_track.dir
+                self.current_spectrum = "default"
+                return
+            most_energetic_muon = max(track_ins, key=lambda t: t.E)
+            if not pdg2name(most_energetic_muon.particle_type) in ['mu-', 'mu+']:
+                log.error("No muon found to determine Cherenkov parameters!")
+                self.current_spectrum = "default"
+                return
+
+            vertex_pos = most_energetic_muon.pos
+            muon_dir = most_energetic_muon.dir
+
+            hits = self.extract_hits(blob)
+            hits = self.first_om_hits(hits)
 
             def cherenkov_time(pmt_pos):
                 """Calculates Cherenkov arrival time in [ns]"""
@@ -240,7 +250,7 @@ class RainbowAlga(object):
                     if not hit.t_cherenkov:
                         t_cherenkov = cherenkov_time(pmt_pos)
                         hit.t_cherenkov = t_cherenkov
-                        print("Hit time: {0}, Expected: {1}, Time Residual: {2}"
+                        log.debug("Hit time: {0}, Expected: {1}, Time Residual: {2}"
                               .format(time, t_cherenkov, time - t_cherenkov))
                     time = time - hit.t_cherenkov
 
@@ -254,6 +264,13 @@ class RainbowAlga(object):
                     progress = 0
                 return tuple(self.cmap(progress))[:3]
             self.spectrum = spectrum
+
+    def toggle_spectrum(self):
+        if self.current_spectrum == 'default':
+            self.current_spectrum = 'time_residuals'
+        else:
+            self.current_spectrum = 'default'
+        self.load_blob(self.event_index)
 
     def remove_hidden_hits(self, hits):
         om_hit_map = {}
@@ -613,10 +630,16 @@ class RainbowAlga(object):
             self.camera.distance = self.camera.distance - 50
         if(key == "-"):
             self.camera.distance = self.camera.distance + 50
+        if(key == "."):
+            print("increase min tot")
+        if(key == ","):
+            print("decrease min tot")
         if(key == 'n'):
             self.load_next_blob()
         if(key == 'p'):
             self.load_previous_blob()
+        if(key == 't'):
+            self.toggle_spectrum()
         if(key == 'm'):
             self.colourist.print_mode = not self.colourist.print_mode
             self.load_logo()
@@ -673,7 +696,8 @@ class RainbowAlga(object):
                 'RIGHT': '-100ns',
                 'a': 'enable/disable rotation animation',
                 'c': 'enable/disable Cherenkov cone',
-                'm': 'switch between screen/print mode',
+                't': 'toggle between spectra',
+                'm': 'toggle screen/print mode',
                 's': 'save screenshot (screenshot.png)',
                 'v': 'start/stop recording (Frame_XXXXX.jpg)',
                 'r': 'reset time',
