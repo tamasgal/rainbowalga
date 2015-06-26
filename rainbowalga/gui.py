@@ -7,7 +7,8 @@ RainbowAlga GUI stuff.
 from __future__ import division, absolute_import, print_function
 
 from OpenGL.GL import glColor3f, glClearColor
-
+from km3pipe.logger import logging
+log = logging.getLogger('rainbowalga')  # pylint: disable=C0103
 
 class Colourist(object):
     """Takes care of the colours in OpenGL. (Singleton)"""
@@ -19,7 +20,8 @@ class Colourist(object):
         return cls._instance
 
     def __init__(self):
-        self.print_mode = False 
+        log.info("Initialising colourist.")
+        self.print_mode = False
         self.cherenkov_cone_enabled = False
         pass
 

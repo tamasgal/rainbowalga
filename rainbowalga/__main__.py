@@ -61,7 +61,7 @@ import pylab
 
 from PIL import Image
 
-from rainbowalga.tools import Clock, Camera, draw_text_2d, draw_text_3d
+from rainbowalga.tools import Clock, Camera, draw_text_2d
 from rainbowalga.physics import Particle, ParticleFit, Neutrino, Hit
 from rainbowalga.gui import Colourist
 from rainbowalga import constants
@@ -70,6 +70,8 @@ from rainbowalga import version
 from km3pipe.dataclasses import Position
 from km3pipe.hardware import Detector
 from km3pipe.pumps import EvtPump
+from km3pipe.tools import pdg2name
+from km3pipe import constants
 
 from km3pipe.logger import logging
 log = logging.getLogger('rainbowalga')  # pylint: disable=C0103
@@ -113,16 +115,6 @@ class RainbowAlga(object):
 
         self.shader = compileProgram(VERTEX_SHADER, FRAGMENT_SHADER)
 
-        self.coordsys = vbo.VBO(
-            np.array([
-                [-1, 0, 0],
-                [1, 0, 0],
-                [0, -1, 0],
-                [0, 1, 0],
-                [0, 0, -1],
-                [0, 0, 1]
-                ], 'f')
-            )
 
         self.blob = None
         self.objects = []
@@ -136,6 +128,7 @@ class RainbowAlga(object):
         self.show_info = True
 
         self.spectrum = None
+        self.current_spectrum = 'default'
         self.cmap = pylab.get_cmap("gist_rainbow")
         self.min_hit_time = None
         self.max_hit_time = None
@@ -186,24 +179,109 @@ class RainbowAlga(object):
         self.add_mc_tracks(blob)
         self.add_reco_tracks(blob)
 
-        hits = blob['EvtRawHits']
-        hits.sort(key=lambda h: h.time)
-        print("Number of hits: {0}".format(len(hits)))
-        if self.min_tot:
-            hits = [hit for hit in blob['EvtRawHits'] if hit.tot >= self.min_tot]
-            print("Number of hits after ToT={0} cut: {1}"
-                  .format(self.min_tot, len(hits)))
-        if not self.min_tot and len(hits) > 500:
-            print("Warning: consider applying a ToT filter to reduce the "
-                  "amount of hits, according to your graphic cards "
-                  "performance!")
+        self.initialise_spectrum(blob, style=self.current_spectrum)
 
+    def reload_blob(self):
+        self.load_blob(self.event_index)
+
+    def initialise_spectrum(self, blob, style="default"):
+
+        if style == 'default':
+            hits = self.extract_hits(blob)
+            hits = self.remove_hidden_hits(hits)
+
+            hit_times = []
+            #step_size = int(len(hits) / 100) + 1
+            for hit in hits:
+                if hit.time > 0:
+                    hit_times.append(hit.time)
+
+            if len(hit_times) == 0:
+                log.warn("No hits left after applying cuts.")
+                return
+
+            self.min_hit_time = min(hit_times)
+            self.max_hit_time = max(hit_times)
+
+            def spectrum(time, hit=None):
+                min_time = min(hit_times)
+                max_time = max(hit_times)
+                diff = max_time - min_time
+                one_percent = diff/100
+                try:
+                    progress = (time - min_time) / one_percent / 100
+                except ZeroDivisionError:
+                    progress = 0
+                return tuple(self.cmap(progress))[:3]
+            self.spectrum = spectrum
+
+        if style == 'time_residuals':
+            try:
+                track_ins = blob['TrackIns']
+            except KeyError:
+                log.error("No tracks found to determine Cherenkov parameters!")
+                self.current_spectrum = "default"
+                return
+            most_energetic_muon = max(track_ins, key=lambda t: t.E)
+            if not pdg2name(most_energetic_muon.particle_type) in ['mu-', 'mu+']:
+                log.error("No muon found to determine Cherenkov parameters!")
+                self.current_spectrum = "default"
+                return
+
+            vertex_pos = most_energetic_muon.pos
+            muon_dir = most_energetic_muon.dir
+
+            hits = self.extract_hits(blob)
+            hits = self.first_om_hits(hits)
+
+            def cherenkov_time(pmt_pos):
+                """Calculates Cherenkov arrival time in [ns]"""
+                v = pmt_pos - vertex_pos
+                l = v.dot(muon_dir)
+                k = np.sqrt(v.dot(v) - l**2)
+                v_g = constants.c_water_antares
+                theta = constants.theta_cherenkov_water_antares
+                t_cherenkov = 1/constants.c * (l - k/np.tan(theta)) + 1 /v_g * k/np.sin(theta)
+                return t_cherenkov * 1e9
+
+            self.min_hit_time = -100
+            self.max_hit_time = 100
+
+            def spectrum(time, hit=None):
+                if hit:
+                    pmt_pos = self.detector.pmt_with_id(hit.pmt_id).pos
+                    if not hit.t_cherenkov:
+                        t_cherenkov = cherenkov_time(pmt_pos)
+                        hit.t_cherenkov = t_cherenkov
+                        log.debug("Hit time: {0}, Expected: {1}, Time Residual: {2}"
+                              .format(time, t_cherenkov, time - t_cherenkov))
+                    time = time - hit.t_cherenkov
+
+                diff = self.max_hit_time - self.min_hit_time
+                one_percent = diff/100
+                try:
+                    progress = (time - self.min_hit_time) / one_percent / 100
+                    if progress > 1:
+                        progress = 1
+                except ZeroDivisionError:
+                    progress = 0
+                return tuple(self.cmap(progress))[:3]
+            self.spectrum = spectrum
+
+    def toggle_spectrum(self):
+        if self.current_spectrum == 'default':
+            self.current_spectrum = 'time_residuals'
+        else:
+            self.current_spectrum = 'default'
+        self.reload_blob()
+
+    def remove_hidden_hits(self, hits):
         om_hit_map = {}
         for hit in hits:
             x, y, z = self.detector.pmt_with_id(hit.pmt_id).pos
             rb_hit = Hit(x, y, z, hit.time, hit.pmt_id, hit.id, hit.tot)
-            om_hit_map.setdefault(self.detector.pmtid2omkey(hit.pmt_id)[:2], []).append(rb_hit)
-
+            om_hit_map.setdefault(self.detector.pmtid2omkey(hit.pmt_id)[:2],
+                                  []).append(rb_hit)
         hits = []
         for om, om_hits in om_hit_map.iteritems():
             largest_hit = None
@@ -219,33 +297,42 @@ class RainbowAlga(object):
                     hits.append(hit)
                     self.shaded_objects.append(hit)
                     largest_hit = hit
-        print("Number of hits after removing hidden ones: {0}".format(len(hits)))
+        print(
+            "Number of hits after removing hidden ones: {0}".format(len(hits)))
+        return hits
 
-
-        hit_times = []
-        #step_size = int(len(hits) / 100) + 1
+    def first_om_hits(self, hits):
+        om_hit_map = {}
         for hit in hits:
-            if hit.time > 0:
-                hit_times.append(hit.time)
+            if hit.time < 0:
+                continue
+            x, y, z = self.detector.pmt_with_id(hit.pmt_id).pos
+            rb_hit = Hit(x, y, z, hit.time, hit.pmt_id, hit.id, hit.tot)
+            om_hit_map.setdefault(self.detector.pmtid2omkey(hit.pmt_id)[:2],
+                                  []).append(rb_hit)
+        hits = []
+        for om, om_hits in om_hit_map.iteritems():
+            first_hit = om_hits[0]
+            self.shaded_objects.append(first_hit)
+            hits.append(first_hit)
+        print(
+            "Number of first OM hits: {0}".format(len(hits)))
+        return hits
 
-        if len(hit_times) == 0:
-            log.warn("No hits left after applying cuts.")
-            return
-
-        self.min_hit_time = min(hit_times)
-        self.max_hit_time = max(hit_times)
-
-        def spectrum(time):
-            min_time = min(hit_times)
-            max_time = max(hit_times)
-            diff = max_time - min_time
-            one_percent = diff/100
-            try:
-                progress = (time - min_time) / one_percent / 100
-            except ZeroDivisionError:
-                progress = 0
-            return tuple(self.cmap(progress))[:3]
-        self.spectrum = spectrum
+    def extract_hits(self, blob):
+        hits = blob['EvtRawHits']
+        print("Number of hits: {0}".format(len(hits)))
+        if self.min_tot:
+            hits = [hit for hit in blob['EvtRawHits'] if
+                    hit.tot > self.min_tot]
+            print("Number of hits after ToT={0} cut: {1}"
+                  .format(self.min_tot, len(hits)))
+        if not self.min_tot and len(hits) > 500:
+            print("Warning: consider applying a ToT filter to reduce the "
+                  "amount of hits, according to your graphic cards "
+                  "performance!")
+        hits.sort(key=lambda h: h.time)
+        return hits
 
     def add_neutrino(self, blob):
         """Add the neutrino to the scene."""
@@ -280,7 +367,8 @@ class RainbowAlga(object):
                 track.length = 200 * track.E / highest_energy
             particle = Particle(track.pos.x, track.pos.y, track.pos.z,
                                 track.dir.x, track.dir.y, track.dir.z,
-                                track.time, constants.c, track.length)
+                                track.time, constants.c, self.colourist,
+                                track.length)
             if track.id == highest_energetic_track.id:
                 particle.color = (0.0, 1.0, 0.2)
                 particle.line_width = 3
@@ -386,6 +474,7 @@ class RainbowAlga(object):
 
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
         self.colourist.now_background()
 
         if self.camera.is_rotating:
@@ -409,8 +498,8 @@ class RainbowAlga(object):
 
         self.draw_gui()
 
-
         glutSwapBuffers()
+
 
     def draw_detector(self):
         glUseProgram(self.shader)
@@ -432,7 +521,6 @@ class RainbowAlga(object):
         logo = self.logo
         logo_bytes = self.logo_bytes
 
-        
         menubar_height = logo.size[1] + 4
         width = glutGet(GLUT_WINDOW_WIDTH)
         height = glutGet(GLUT_WINDOW_HEIGHT)
@@ -456,7 +544,6 @@ class RainbowAlga(object):
         #glVertex2f(0, menubar_height)
         #glEnd()
 
-
         # Colour legend
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -468,7 +555,7 @@ class RainbowAlga(object):
         min_y = menubar_height + 5
         max_y = height - 20
         time_step_size = math.ceil(self.max_hit_time / 20 / 50) * 50
-        hit_times = list(range(0, int(self.max_hit_time), int(time_step_size)))
+        hit_times = list(range(int(self.min_hit_time), int(self.max_hit_time), int(time_step_size)))
         segment_height = int((max_y - min_y) / len(hit_times))
         for hit_time in hit_times:
             segment_nr = hit_times.index(hit_time)
@@ -532,9 +619,6 @@ class RainbowAlga(object):
                 self.mouse_x = x
                 self.mouse_y = y
                 self.camera.is_rotating = False
-            else:
-                self.camera.is_rotating = True
-
         if button == 3:
             self.camera.distance = self.camera.distance + 2
         if button == 4:
@@ -551,27 +635,28 @@ class RainbowAlga(object):
             self.camera.distance = self.camera.distance - 50
         if(key == "-"):
             self.camera.distance = self.camera.distance + 50
-
+        if(key == "."):
+            self.min_tot += 0.5
+            self.reload_blob()
+        if(key == ","):
+            self.min_tot -= 0.5
+            self.reload_blob()
         if(key == 'n'):
             self.load_next_blob()
-
         if(key == 'p'):
             self.load_previous_blob()
-
+        if(key == 't'):
+            self.toggle_spectrum()
         if(key == 'm'):
             self.colourist.print_mode = not self.colourist.print_mode
             self.load_logo()
-
         if(key == 'a'):
             self.camera.is_rotating = not self.camera.is_rotating
-
         if(key == 'c'):
             self.colourist.cherenkov_cone_enabled = \
                 not self.colourist.cherenkov_cone_enabled 
-
         if(key == "s"):
             self.save_screenshot()
-
         if(key == 'v'):
             self.frame_index = 0
             self.is_recording = not self.is_recording
@@ -618,13 +703,14 @@ class RainbowAlga(object):
                 'RIGHT': '-100ns',
                 'a': 'enable/disable rotation animation',
                 'c': 'enable/disable Cherenkov cone',
-                'm': 'switch between screen/print mode',
+                't': 'toggle between spectra',
+                'm': 'toggle screen/print mode',
                 's': 'save screenshot (screenshot.png)',
                 'v': 'start/stop recording (Frame_XXXXX.jpg)',
                 'r': 'reset time',
                 '<space>': 'pause time',
-                '+': 'zoom in',
-                '-': 'zoom out',
+                '+ or -': 'zoom in/out',
+                ', or .': 'decrease/increase min_tot by 0.5ns',
                 '<esc> or q': 'quit',
                 }
             help_string = "Keyboard commands:\n-------------------\n"
@@ -641,7 +727,8 @@ class RainbowAlga(object):
         info_text = ''
         try:
             event_number = self.blob['start_event'][0]
-            info_text += "Event #{0}\n".format(event_number)
+            info_text += "Event #{0}, ToT>{1}ns\n" \
+                         .format(event_number, self.min_tot)
         except KeyError:
             pass
         try:
@@ -673,9 +760,7 @@ def main():
     except TypeError:
         skip_to_blob = 0 
     app = RainbowAlga(detector_file, event_file, min_tot, skip_to_blob)
-    
 
- 
 
 if __name__ == "__main__":
     main()
