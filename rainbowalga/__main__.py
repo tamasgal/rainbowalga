@@ -367,7 +367,8 @@ class RainbowAlga(object):
                 track.length = 200 * track.E / highest_energy
             particle = Particle(track.pos.x, track.pos.y, track.pos.z,
                                 track.dir.x, track.dir.y, track.dir.z,
-                                track.time, constants.c, track.length)
+                                track.time, constants.c, self.colourist,
+                                track.length)
             if track.id == highest_energetic_track.id:
                 particle.color = (0.0, 1.0, 0.2)
                 particle.line_width = 3
