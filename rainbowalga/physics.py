@@ -51,7 +51,7 @@ class Neutrino(object):
         glPopMatrix()
 
 class Particle(object):
-    def __init__(self, x, y, z, dx, dy, dz, time, speed,
+    def __init__(self, x, y, z, dx, dy, dz, time, speed, colourist,
                  length=0, color=(0.0, 0.5, 0.7), line_width=1,
                  cherenkov_cone_enabled=False):
         self.x = x
@@ -68,7 +68,7 @@ class Particle(object):
         self.color = color
         self.line_width = line_width
         self.cherenkov_cone_enabled = cherenkov_cone_enabled
-        self.colourist = Colourist()
+        self.colourist = colourist
 
     def draw(self, time, line_width=None):
         time = time * 1e-9
