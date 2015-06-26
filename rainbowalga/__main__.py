@@ -664,10 +664,11 @@ class RainbowAlga(object):
             else:
                 neutrino_str = str(neutrino).replace(' ', '_').replace(',', '')
                 neutrino_str = neutrino_str.replace('Neutrino:', '')
-            screenshot_name = "RA_Event{0}_ToTCut{1}{2}.png".format(
+            screenshot_name = "RA_Event{0}_ToTCut{1}{2}_t{3}ns.png".format(
                         event_number,
                         self.min_tot,
-                        neutrino_str
+                        neutrino_str,
+                        int(self.clock.time)
                     )
 
             self.save_screenshot(screenshot_name)
