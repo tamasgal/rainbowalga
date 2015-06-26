@@ -181,6 +181,9 @@ class RainbowAlga(object):
 
         self.initialise_spectrum(blob, style=self.current_spectrum)
 
+    def reload_blob(self):
+        self.load_blob(self.event_index)
+
     def initialise_spectrum(self, blob, style="default"):
 
         if style == 'default':
@@ -270,7 +273,7 @@ class RainbowAlga(object):
             self.current_spectrum = 'time_residuals'
         else:
             self.current_spectrum = 'default'
-        self.load_blob(self.event_index)
+        self.reload_blob()
 
     def remove_hidden_hits(self, hits):
         om_hit_map = {}
@@ -470,6 +473,7 @@ class RainbowAlga(object):
 
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
         self.colourist.now_background()
 
         if self.camera.is_rotating:
@@ -631,9 +635,11 @@ class RainbowAlga(object):
         if(key == "-"):
             self.camera.distance = self.camera.distance + 50
         if(key == "."):
-            print("increase min tot")
+            self.min_tot += 0.5
+            self.reload_blob()
         if(key == ","):
-            print("decrease min tot")
+            self.min_tot -= 0.5
+            self.reload_blob()
         if(key == 'n'):
             self.load_next_blob()
         if(key == 'p'):
@@ -702,8 +708,8 @@ class RainbowAlga(object):
                 'v': 'start/stop recording (Frame_XXXXX.jpg)',
                 'r': 'reset time',
                 '<space>': 'pause time',
-                '+': 'zoom in',
-                '-': 'zoom out',
+                '+ or -': 'zoom in/out',
+                ', or .': 'decrease/increase min_tot by 0.5ns',
                 '<esc> or q': 'quit',
                 }
             help_string = "Keyboard commands:\n-------------------\n"
