@@ -656,7 +656,22 @@ class RainbowAlga(object):
             self.colourist.cherenkov_cone_enabled = \
                 not self.colourist.cherenkov_cone_enabled 
         if(key == "s"):
-            self.save_screenshot()
+            event_number = self.blob['start_event'][0]
+            try:
+                neutrino = self.blob['Neutrino']
+            except KeyError:
+                neutrino_str = ''
+            else:
+                neutrino_str = str(neutrino).replace(' ', '_').replace(',', '')
+                neutrino_str = neutrino_str.replace('Neutrino:', '')
+            screenshot_name = "RA_Event{0}_ToTCut{1}{2}_t{3}ns.png".format(
+                        event_number,
+                        self.min_tot,
+                        neutrino_str,
+                        int(self.clock.time)
+                    )
+
+            self.save_screenshot(screenshot_name)
         if(key == 'v'):
             self.frame_index = 0
             self.is_recording = not self.is_recording
