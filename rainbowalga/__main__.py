@@ -545,10 +545,7 @@ class RainbowAlga(object):
         #glEnd()
 
         # Colour legend
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-        glDisable(GL_LIGHTING);
-        glBegin(GL_QUADS)
+
 
         left_x = width - 20
         right_x = width - 10
@@ -556,17 +553,27 @@ class RainbowAlga(object):
         max_y = height - 20
         time_step_size = math.ceil(self.max_hit_time / 20 / 50) * 50
         hit_times = list(range(int(self.min_hit_time), int(self.max_hit_time), int(time_step_size)))
-        segment_height = int((max_y - min_y) / len(hit_times))
-        for hit_time in hit_times:
-            segment_nr = hit_times.index(hit_time)
-            glColor3f(*self.spectrum(hit_time))
-            glVertex2f(left_x, max_y - segment_height * segment_nr)
-            glVertex2f(right_x, max_y - segment_height * segment_nr)
-            glColor3f(*self.spectrum(hit_time + time_step_size))
-            glVertex2f(left_x, max_y - segment_height * (segment_nr + 1))
-            glVertex2f(right_x, max_y - segment_height * (segment_nr + 1))
+        if len(hit_times) > 1:
+            segment_height = int((max_y - min_y) / len(hit_times))
+            glMatrixMode(GL_MODELVIEW)
+            glLoadIdentity()
+            glDisable(GL_LIGHTING)
+            glBegin(GL_QUADS)
+            for hit_time in hit_times:
+                segment_nr = hit_times.index(hit_time)
+                glColor3f(*self.spectrum(hit_time))
+                glVertex2f(left_x, max_y - segment_height * segment_nr)
+                glVertex2f(right_x, max_y - segment_height * segment_nr)
+                glColor3f(*self.spectrum(hit_time + time_step_size))
+                glVertex2f(left_x, max_y - segment_height * (segment_nr + 1))
+                glVertex2f(right_x, max_y - segment_height * (segment_nr + 1))
+            glEnd()
 
-        glEnd()
+            # Colour legend labels
+            self.colourist.now_text()
+            for hit_time in hit_times:
+                segment_nr = hit_times.index(hit_time)
+                draw_text_2d("{0:>5}ns".format(hit_time), width - 80, (height - max_y) + segment_height * segment_nr)
 
         glPushMatrix()
         glLoadIdentity()
@@ -580,10 +587,7 @@ class RainbowAlga(object):
 
         self.colourist.now_text()
 
-        # Colour legend labels
-        for hit_time in hit_times:
-            segment_nr = hit_times.index(hit_time)
-            draw_text_2d("{0:>5}ns".format(hit_time), width - 80, (height - max_y) + segment_height * segment_nr)
+
         #draw_text_2d("{0}ns".format(int(self.min_hit_time)), width - 80, 20)
         #draw_text_2d("{0}ns".format(int(self.max_hit_time)), width - 80, height - menubar_height - 10)
         #draw_text_2d("{0}ns".format(int((self.min_hit_time + self.max_hit_time) / 2)), width - 80, int(height/2))
