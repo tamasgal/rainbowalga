@@ -7,6 +7,9 @@ RainbowAlga GUI stuff.
 from __future__ import division, absolute_import, print_function
 
 from OpenGL.GL import glColor3f, glClearColor
+
+import pylab
+
 from km3pipe.logger import logging
 log = logging.getLogger('rainbowalga')  # pylint: disable=C0103
 
@@ -24,6 +27,10 @@ class Colourist(object):
         self.print_mode = False
         self.cherenkov_cone_enabled = False
         pass
+
+    @property
+    def cmap(self):
+        return pylab.get_cmap("gist_rainbow")
 
     def now_text(self):
         if self.print_mode:

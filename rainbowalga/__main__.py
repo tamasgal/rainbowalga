@@ -57,7 +57,6 @@ from OpenGL.GL.shaders import compileShader, compileProgram
 
 
 import numpy as np
-import pylab
 
 from PIL import Image
 
@@ -129,7 +128,7 @@ class RainbowAlga(object):
 
         self.spectrum = None
         self.current_spectrum = 'default'
-        self.cmap = pylab.get_cmap("gist_rainbow")
+        self.cmap = self.colourist.cmap
         self.min_hit_time = None
         self.max_hit_time = None
 
