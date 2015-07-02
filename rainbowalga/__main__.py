@@ -775,7 +775,7 @@ def main():
     try:
         min_tot = float(arguments['-t'])
     except TypeError:
-        min_tot = 30 
+        min_tot = 27 
     try:
         skip_to_blob = int(arguments['-s'])
     except TypeError:
