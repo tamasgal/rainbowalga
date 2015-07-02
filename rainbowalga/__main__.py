@@ -32,7 +32,7 @@ from OpenGL.GLUT import (glutCreateWindow, glutDisplayFunc, glutIdleFunc,
                          glutGet,
                          GLUT_DOUBLE, GLUT_RGB, GLUT_DEPTH, GLUT_MULTISAMPLE,
                          GLUT_WINDOW_WIDTH, GLUT_WINDOW_HEIGHT,
-                         GLUT_LEFT_BUTTON, GLUT_DOWN, GLUT_KEY_LEFT,
+                         GLUT_LEFT_BUTTON, GLUT_DOWN, GLUT_UP, GLUT_KEY_LEFT,
                          GLUT_KEY_RIGHT)
 from OpenGL.GLU import gluPerspective
 from OpenGL.GL import (glBegin, glClear, glClearColor, glClearDepth, glColor3f,
@@ -60,7 +60,7 @@ import numpy as np
 
 from PIL import Image
 
-from rainbowalga.tools import Clock, Camera, draw_text_2d
+from rainbowalga.tools import Clock, Camera, draw_text_2d, base_round
 from rainbowalga.physics import Particle, ParticleFit, Neutrino, Hit
 from rainbowalga.gui import Colourist
 from rainbowalga import constants
@@ -160,7 +160,7 @@ class RainbowAlga(object):
             image = 'images/km3net_logo.bmp'
 
         current_path = os.path.dirname(os.path.abspath(__file__))
-        
+
         image_path = os.path.join(current_path, image)
         self.logo = Image.open(image_path)
         # Create a raw string from the image data - data will be unsigned bytes
@@ -203,8 +203,8 @@ class RainbowAlga(object):
             self.max_hit_time = max(hit_times)
 
             def spectrum(time, hit=None):
-                min_time = min(hit_times)
-                max_time = max(hit_times)
+                min_time = self.min_hit_time
+                max_time = self.max_hit_time
                 diff = max_time - min_time
                 one_percent = diff/100
                 try:
@@ -617,11 +617,20 @@ class RainbowAlga(object):
 
 
     def mouse(self, button, state, x, y):
+        width = glutGet(GLUT_WINDOW_WIDTH)
+        height = glutGet(GLUT_WINDOW_HEIGHT)
+
         if button == GLUT_LEFT_BUTTON:
             if state == GLUT_DOWN:
+                if x > width - 70:
+                    self.drag_mode = 'spectrum'
+                else:
+                    self.drag_mode = 'rotate'
+                    self.camera.is_rotating = False
                 self.mouse_x = x
                 self.mouse_y = y
-                self.camera.is_rotating = False
+            if state == GLUT_UP:
+                self.drag_mode = None
         if button == 3:
             self.camera.distance = self.camera.distance + 2
         if button == 4:
@@ -659,7 +668,7 @@ class RainbowAlga(object):
             self.camera.is_rotating = not self.camera.is_rotating
         if(key == 'c'):
             self.colourist.cherenkov_cone_enabled = \
-                not self.colourist.cherenkov_cone_enabled 
+                not self.colourist.cherenkov_cone_enabled
         if(key == "s"):
             event_number = self.blob['start_event'][0]
             try:
@@ -695,8 +704,16 @@ class RainbowAlga(object):
             self.clock.fast_forward(100)
 
     def drag(self, x, y):
-        self.camera.rotate_z(self.mouse_x - x)
-        self.camera.move_z(-(self.mouse_y - y)*8)
+        if self.drag_mode == 'rotate':
+            self.camera.rotate_z(self.mouse_x - x)
+            self.camera.move_z(-(self.mouse_y - y)*8)
+        if self.drag_mode == 'spectrum':
+            self.min_hit_time += (self.mouse_y - y) * 10
+            self.max_hit_time += (self.mouse_y - y) * 10
+            self.max_hit_time -= (self.mouse_x - x) * 10
+            self.min_hit_time += (self.mouse_x - x) * 10
+            self.min_hit_time = base_round(self.min_hit_time, 10)
+            self.max_hit_time = base_round(self.max_hit_time, 10)
         self.mouse_x = x
         self.mouse_y = y
 
@@ -775,11 +792,11 @@ def main():
     try:
         min_tot = float(arguments['-t'])
     except TypeError:
-        min_tot = 30 
+        min_tot = 30
     try:
         skip_to_blob = int(arguments['-s'])
     except TypeError:
-        skip_to_blob = 0 
+        skip_to_blob = 0
     app = RainbowAlga(detector_file, event_file, min_tot, skip_to_blob)
 
 
