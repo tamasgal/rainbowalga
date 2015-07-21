@@ -401,7 +401,8 @@ class RainbowAlga(object):
             secondary.hidden = not self.show_secondaries
 
         highest_energetic = max(secondaries, key=lambda s: s.energy)
-        highest_energetic.hidden = False
+        if highest_energetic:
+            highest_energetic.hidden = False
 
 
     def load_next_blob(self):
