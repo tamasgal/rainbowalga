@@ -123,6 +123,7 @@ class RainbowAlga(object):
         self.mouse_x = None
         self.mouse_y = None
 
+        self.show_secondaries = True
         self.show_help = False
         self._help_string = None
         self.show_info = True
@@ -368,11 +369,13 @@ class RainbowAlga(object):
             particle = Particle(track.pos.x, track.pos.y, track.pos.z,
                                 track.dir.x, track.dir.y, track.dir.z,
                                 track.time, constants.c, self.colourist,
-                                track.length)
+                                track.E, track.length)
+            particle.hidden = not self.show_secondaries
             if track.id == highest_energetic_track.id:
                 particle.color = (0.0, 1.0, 0.2)
                 particle.line_width = 3
                 particle.cherenkov_cone_enabled = True
+                particle.hidden = False
             self.objects.setdefault("mc_tracks", []).append(particle)
 
     def add_reco_tracks(self, blob):
@@ -389,6 +392,17 @@ class RainbowAlga(object):
                                    constants.c, track.ts, track.te)
             print("Found track fit: {0}".format(track))
             self.objects.setdefault("reco_tracks", []).append(particle)
+
+    def toggle_secondaries(self):
+        self.show_secondaries = not self.show_secondaries
+
+        secondaries = self.objects["mc_tracks"]
+        for secondary in secondaries:
+            secondary.hidden = not self.show_secondaries
+
+        highest_energetic = max(secondaries, key=lambda s: s.energy)
+        highest_energetic.hidden = False
+
 
     def load_next_blob(self):
         try:
@@ -649,6 +663,8 @@ class RainbowAlga(object):
             self.load_next_blob()
         if(key == 'p'):
             self.load_previous_blob()
+        if(key == 'u'):
+            self.toggle_secondaries()
         if(key == 't'):
             self.toggle_spectrum()
         if(key == 'x'):
@@ -725,6 +741,7 @@ class RainbowAlga(object):
                 'a': 'enable/disable rotation animation',
                 'c': 'enable/disable Cherenkov cone',
                 't': 'toggle between spectra',
+                'u': 'toggle secondaries',
                 'x': 'cycle through colour schemes',
                 'm': 'toggle screen/print mode',
                 's': 'save screenshot (screenshot.png)',
