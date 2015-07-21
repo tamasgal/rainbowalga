@@ -29,8 +29,11 @@ class Neutrino(object):
         self.time = time * 1e-9
         self.color = color
         self.line_width = line_width
+        self.hidden = False
 
     def draw(self, time, line_width=None):
+        if self.hidden:
+            return
         time = time * 1e-9
 
 
@@ -52,7 +55,7 @@ class Neutrino(object):
 
 class Particle(object):
     def __init__(self, x, y, z, dx, dy, dz, time, speed, colourist,
-                 length=0, color=(0.0, 0.5, 0.7), line_width=1,
+                 energy, length=0, color=(0.0, 0.5, 0.7), line_width=1,
                  cherenkov_cone_enabled=False):
         self.x = x
         self.y = y
@@ -64,13 +67,17 @@ class Particle(object):
         self.dir = Direction((dx, dy, dz))
         self.time = time * 1e-9
         self.speed = speed
+        self.energy = energy
         self.length = abs(length)
         self.color = color
         self.line_width = line_width
         self.cherenkov_cone_enabled = cherenkov_cone_enabled
         self.colourist = colourist
+        self.hidden = False
 
     def draw(self, time, line_width=None):
+        if self.hidden:
+            return
         time = time * 1e-9
         if time <= self.time:
             return
@@ -138,8 +145,11 @@ class ParticleFit(object):
         self.te = te
         self.color = color
         self.line_width = line_width
+        self.hidden = False
 
     def draw(self, time, line_width=None):
+        if self.hidden:
+            return
         if time <= self.ts:
             return
         time = time * 1e-9
