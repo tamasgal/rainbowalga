@@ -23,6 +23,7 @@ import time
 import pickle
 import os
 import math
+import itertools
 
 from OpenGL.GLUT import (glutCreateWindow, glutDisplayFunc, glutIdleFunc,
                          glutInit, glutInitDisplayMode, glutInitWindowPosition,
@@ -116,7 +117,7 @@ class RainbowAlga(object):
 
 
         self.blob = None
-        self.objects = []
+        self.objects = {}
         self.shaded_objects = []
 
         self.mouse_x = None
@@ -171,7 +172,7 @@ class RainbowAlga(object):
         print("Loading blob {0}...".format(index))
         blob = self.blob = self.pump.get_blob(index)
 
-        self.objects = []
+        self.objects = {}
         self.shaded_objects = []
 
         self.add_neutrino(blob)
@@ -346,7 +347,7 @@ class RainbowAlga(object):
                             0)
         particle.color = (1.0, 0.0, 0.0)
         particle.line_width = 3
-        self.objects.append(particle)
+        self.objects.setdefault("neutrinos", []).append(particle)
 
     def add_mc_tracks(self, blob):
         """Find MC particles and add them to the objects to render."""
@@ -372,7 +373,7 @@ class RainbowAlga(object):
                 particle.color = (0.0, 1.0, 0.2)
                 particle.line_width = 3
                 particle.cherenkov_cone_enabled = True
-            self.objects.append(particle)
+            self.objects.setdefault("mc_tracks", []).append(particle)
 
     def add_reco_tracks(self, blob):
         """Find reco particles and add them to the objects to render."""
@@ -387,7 +388,7 @@ class RainbowAlga(object):
                                    track.dir.x, track.dir.y, track.dir.z,
                                    constants.c, track.ts, track.te)
             print("Found track fit: {0}".format(track))
-            self.objects.append(particle)
+            self.objects.setdefault("reco_tracks", []).append(particle)
 
     def load_next_blob(self):
         try:
@@ -492,7 +493,7 @@ class RainbowAlga(object):
 
         glDisable(GL_LIGHTING)
 
-        for obj in self.objects:
+        for obj in itertools.chain.from_iterable(self.objects.values()):
             obj.draw(self.clock.time)
 
         self.draw_gui()
