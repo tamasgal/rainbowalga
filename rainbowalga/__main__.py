@@ -607,9 +607,7 @@ class RainbowAlga(object):
         #draw_text_2d("{0}ns".format(int(self.max_hit_time)), width - 80, height - menubar_height - 10)
         #draw_text_2d("{0}ns".format(int((self.min_hit_time + self.max_hit_time) / 2)), width - 80, int(height/2))
 
-        draw_text_2d("FPS:  {0:.1f}\nTime: {1:.0f} ns"
-                     .format(self.clock.fps, self.clock.time),
-                     10, 30)
+
         if self.show_help:
             self.display_help()
 
@@ -783,6 +781,9 @@ class RainbowAlga(object):
         draw_text_2d(self.help_string, 10, pos_y)
 
     def display_info(self):
+        draw_text_2d("FPS:  {0:.1f}\nTime: {1:.0f} ns"
+                     .format(self.clock.fps, self.clock.time),
+                     10, 30)
         draw_text_2d(self.blob_info, 150, 30)
 
 
