@@ -70,7 +70,7 @@ from rainbowalga import version
 from km3pipe.dataclasses import Position
 from km3pipe.hardware import Detector
 from km3pipe.pumps import EvtPump
-from km3pipe.tools import pdg2name
+from km3pipe.tools import pdg2name, angle_between
 from km3pipe import constants
 
 from km3pipe.logger import logging
@@ -162,7 +162,7 @@ class RainbowAlga(object):
             image = 'images/km3net_logo.bmp'
 
         current_path = os.path.dirname(os.path.abspath(__file__))
-        
+
         image_path = os.path.join(current_path, image)
         self.logo = Image.open(image_path)
         # Create a raw string from the image data - data will be unsigned bytes
@@ -362,6 +362,10 @@ class RainbowAlga(object):
         for track in track_ins:
             if track.particle_type in (0, 22):
                 # skip unknowns, photons
+                continue
+            if angle_between(highest_energetic_track.dir, track.dir) > 0.035:
+                # TODO: make this realistic!
+                # skip if angle too large
                 continue
             if track.particle_type not in (-11, 11, -13, 13, -15, 15):
                 # TODO: make this realistic!
@@ -675,7 +679,7 @@ class RainbowAlga(object):
             self.camera.is_rotating = not self.camera.is_rotating
         if(key == 'c'):
             self.colourist.cherenkov_cone_enabled = \
-                not self.colourist.cherenkov_cone_enabled 
+                not self.colourist.cherenkov_cone_enabled
         if(key == "s"):
             event_number = self.blob['start_event'][0]
             try:
@@ -795,11 +799,11 @@ def main():
     try:
         min_tot = float(arguments['-t'])
     except TypeError:
-        min_tot = 27 
+        min_tot = 27
     try:
         skip_to_blob = int(arguments['-s'])
     except TypeError:
-        skip_to_blob = 0 
+        skip_to_blob = 0
     app = RainbowAlga(detector_file, event_file, min_tot, skip_to_blob)
 
 
