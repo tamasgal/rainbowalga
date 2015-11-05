@@ -14,6 +14,7 @@ from OpenGL.GLUT import glutSolidSphere, glutSolidCone
 
 from rainbowalga.gui import Colourist
 
+
 class Neutrino(object):
     def __init__(self, x, y, z, dx, dy, dz, time,
                  color=(1.0, 0.0, 0.0), line_width=3):
@@ -52,6 +53,7 @@ class Neutrino(object):
         glVertex3f(*pos_end)
         glEnd()
         glPopMatrix()
+
 
 class Particle(object):
     def __init__(self, x, y, z, dx, dy, dz, time, speed, colourist,
@@ -125,7 +127,7 @@ class Particle(object):
             glutSolidCone(0.6691*height, height, 128, 64)
             glPopMatrix()
             glPopMatrix()
-            
+
             glDisable(GL_LIGHTING)
 
 
@@ -172,6 +174,26 @@ class ParticleFit(object):
         glBegin(GL_LINES)
         glVertex3f(*pos_start)
         glVertex3f(*pos_end)
+        glEnd()
+        glPopMatrix()
+
+
+class DOMBalance(object):
+    def __init__(self, pos, hits, det):
+        self.pos = pos
+        self.hits = hits
+        self.pos_end = Position((self.pos.x, self.pos.y, self.pos.z)) #!!!!
+        for hit in hits:
+            dir = det.pmt_with_id(hit.pmt_id).dir
+            self.pos_end += 6*dir
+
+    def draw(self, time):
+        glPushMatrix()
+        glLineWidth(1)
+        glColor3f(1.0, 1.0, 1.0)
+        glBegin(GL_LINES)
+        glVertex3f(*self.pos)
+        glVertex3f(*self.pos_end)
         glEnd()
         glPopMatrix()
 

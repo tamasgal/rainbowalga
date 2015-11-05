@@ -62,7 +62,8 @@ import numpy as np
 from PIL import Image
 
 from rainbowalga.tools import Clock, Camera, draw_text_2d
-from rainbowalga.physics import Particle, ParticleFit, Neutrino, Hit
+from rainbowalga.physics import (Particle, ParticleFit, Neutrino, Hit,
+                                 DOMBalance)
 from rainbowalga.gui import Colourist
 from rainbowalga import constants
 from rainbowalga import version
@@ -162,7 +163,7 @@ class RainbowAlga(object):
             image = 'images/km3net_logo.bmp'
 
         current_path = os.path.dirname(os.path.abspath(__file__))
-        
+
         image_path = os.path.join(current_path, image)
         self.logo = Image.open(image_path)
         # Create a raw string from the image data - data will be unsigned bytes
@@ -180,10 +181,33 @@ class RainbowAlga(object):
         self.add_mc_tracks(blob)
         self.add_reco_tracks(blob)
 
+        self.initialise_dom_balances(blob)
+
         self.initialise_spectrum(blob, style=self.current_spectrum)
+
 
     def reload_blob(self):
         self.load_blob(self.event_index)
+
+
+    def initialise_dom_balances(self, blob):
+        det = self.detector
+        hits = blob['EvtRawHits']
+        dom_hits = {}
+        for hit in hits:
+            om = det.pmtid2omkey(hit.pmt_id)[:2]
+            dom_hits.setdefault(om, []).append(hit)
+        for om, hits in dom_hits.items():
+            if len(hits) > 40:
+                #print("OM {0}: {1} hits".format(str(om), len(hits)))
+
+                # waiting for floor id fix! until now:
+                first_hit = hits[0]
+                pos = det.pmt_with_id(first_hit.pmt_id).pos
+
+                dom_balance = DOMBalance(pos, hits, det)
+                self.objects.setdefault("dom_balances", []).append(dom_balance)
+
 
     def initialise_spectrum(self, blob, style="default"):
 
@@ -675,7 +699,7 @@ class RainbowAlga(object):
             self.camera.is_rotating = not self.camera.is_rotating
         if(key == 'c'):
             self.colourist.cherenkov_cone_enabled = \
-                not self.colourist.cherenkov_cone_enabled 
+                not self.colourist.cherenkov_cone_enabled
         if(key == "s"):
             event_number = self.blob['start_event'][0]
             try:
@@ -795,11 +819,11 @@ def main():
     try:
         min_tot = float(arguments['-t'])
     except TypeError:
-        min_tot = 27 
+        min_tot = 27
     try:
         skip_to_blob = int(arguments['-s'])
     except TypeError:
-        skip_to_blob = 0 
+        skip_to_blob = 0
     app = RainbowAlga(detector_file, event_file, min_tot, skip_to_blob)
 
 
