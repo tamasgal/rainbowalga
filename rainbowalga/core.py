@@ -5,3 +5,6 @@ class Position(object):
         self.x = x
         self.y = y
         self.z = z
+
+class Alga(object):
+    pass
