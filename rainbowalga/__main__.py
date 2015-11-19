@@ -4,7 +4,8 @@
 RainbowAlga
 
 Usage:
-    rainbowalga [options] EVENT_FILE
+    rainbowalga
+    rainbowalga [options] [EVENT_FILE]
     rainbowalga (-h | --help)
     rainbowalga --version
 
@@ -143,13 +144,16 @@ class RainbowAlga(object):
         self.camera.target = Position((0, 0, z_shift))
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
-        self.pump = EvtPump(filename=event_file)
-        try:
-            self.load_blob(skip_to_blob)
-        except IndexError:
-            print("Could not load blob at index {0}".format(skip_to_blob))
-            print("Starting from the first one...")
-            self.load_blob(0)
+        if event_file:
+            self.pump = EvtPump(filename=event_file)
+            try:
+                self.load_blob(skip_to_blob)
+            except IndexError:
+                print("Could not load blob at index {0}".format(skip_to_blob))
+                print("Starting from the first one...")
+                self.load_blob(0)
+        else:
+            print("No event file specified. Only the detector will be shown.")
 
         self.clock.reset()
         self.timer.reset()
@@ -563,9 +567,40 @@ class RainbowAlga(object):
         #glVertex2f(0, menubar_height)
         #glEnd()
 
+        try:
+            self.draw_colour_legend()
+        except TypeError:
+            pass
+
+        glPushMatrix()
+        glLoadIdentity()
+        glRasterPos(4, logo.size[1] + 4)
+        glDrawPixels(logo.size[0], logo.size[1], GL_RGB, GL_UNSIGNED_BYTE, logo_bytes)
+        glPopMatrix()
+
+        glMatrixMode(GL_PROJECTION)
+        glPopMatrix()
+        glMatrixMode(GL_MODELVIEW)
+
+        self.colourist.now_text()
+
+
+        #draw_text_2d("{0}ns".format(int(self.min_hit_time)), width - 80, 20)
+        #draw_text_2d("{0}ns".format(int(self.max_hit_time)), width - 80, height - menubar_height - 10)
+        #draw_text_2d("{0}ns".format(int((self.min_hit_time + self.max_hit_time) / 2)), width - 80, int(height/2))
+
+
+        if self.show_help:
+            self.display_help()
+
+        if self.show_info:
+            self.display_info()
+
+    def draw_colour_legend(self):
+        menubar_height = self.logo.size[1] + 4
+        width = glutGet(GLUT_WINDOW_WIDTH)
+        height = glutGet(GLUT_WINDOW_HEIGHT)
         # Colour legend
-
-
         left_x = width - 20
         right_x = width - 10
         min_y = menubar_height + 5
@@ -593,31 +628,6 @@ class RainbowAlga(object):
             for hit_time in hit_times:
                 segment_nr = hit_times.index(hit_time)
                 draw_text_2d("{0:>5}ns".format(hit_time), width - 80, (height - max_y) + segment_height * segment_nr)
-
-        glPushMatrix()
-        glLoadIdentity()
-        glRasterPos(4, logo.size[1] + 4)
-        glDrawPixels(logo.size[0], logo.size[1], GL_RGB, GL_UNSIGNED_BYTE, logo_bytes)
-        glPopMatrix()
-
-        glMatrixMode(GL_PROJECTION)
-        glPopMatrix()
-        glMatrixMode(GL_MODELVIEW)
-
-        self.colourist.now_text()
-
-
-        #draw_text_2d("{0}ns".format(int(self.min_hit_time)), width - 80, 20)
-        #draw_text_2d("{0}ns".format(int(self.max_hit_time)), width - 80, height - menubar_height - 10)
-        #draw_text_2d("{0}ns".format(int((self.min_hit_time + self.max_hit_time) / 2)), width - 80, int(height/2))
-
-
-        if self.show_help:
-            self.display_help()
-
-        if self.show_info:
-            self.display_info()
-
 
     def resize(self, width, height):
         if width < 400:
