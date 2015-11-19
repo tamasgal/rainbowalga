@@ -91,7 +91,7 @@ class RainbowAlga(object):
 
         if not detector_file:
             detector_file = os.path.join(current_path,
-                                         'data/km3net_jul13_90m_r1494.detx')
+                            'data/km3net_jul13_90m_r1494_corrected.detx')
 
         self.load_logo()
 
