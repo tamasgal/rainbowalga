@@ -735,7 +735,7 @@ class RainbowAlga(object):
         height = glutGet(GLUT_WINDOW_HEIGHT)
         pixelset = (GLubyte * (3*width*height))(0)
         glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixelset)
-        image = Image.fromstring(mode="RGB", size=(width, height), data=pixelset)
+        image = Image.frombytes(mode="RGB", size=(width, height), data=pixelset)
         image = image.transpose(Image.FLIP_TOP_BOTTOM)
         image.save(name)
         print("Screenshot saved as '{0}'.".format(name))
