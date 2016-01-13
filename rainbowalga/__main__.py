@@ -605,7 +605,10 @@ class RainbowAlga(object):
         right_x = width - 10
         min_y = menubar_height + 5
         max_y = height - 20
-        time_step_size = math.ceil(self.max_hit_time / 20 / 50) * 50
+        n_steps = 10
+        round_to = 20
+        time_range = math.abs(self.max_hit_time - self.max_min_time)
+        time_step_size = base_round(time_range / n_steps, round_to)
         hit_times = list(range(int(self.min_hit_time), int(self.max_hit_time), int(time_step_size)))
         if len(hit_times) > 1:
             segment_height = int((max_y - min_y) / len(hit_times))
