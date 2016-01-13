@@ -607,7 +607,7 @@ class RainbowAlga(object):
         max_y = height - 20
         n_steps = 10
         round_to = 20
-        time_range = math.abs(self.max_hit_time - self.max_min_time)
+        time_range = math.abs(self.max_hit_time - self.min_hit_time)
         time_step_size = base_round(time_range / n_steps, round_to)
         hit_times = list(range(int(self.min_hit_time), int(self.max_hit_time), int(time_step_size)))
         if len(hit_times) > 1:
