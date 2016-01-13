@@ -217,3 +217,6 @@ def draw_text_3d(text, x, y, z, color=None):
         else:
             glutBitmapCharacter(GLUT_BITMAP_8_BY_13, ord(character))
 
+
+def base_round(x, base=10):
+    return int(base * round(float(x)/base))
