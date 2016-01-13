@@ -4,7 +4,8 @@
 RainbowAlga
 
 Usage:
-    rainbowalga [options] EVENT_FILE
+    rainbowalga
+    rainbowalga [options] [EVENT_FILE]
     rainbowalga (-h | --help)
     rainbowalga --version
 
@@ -23,6 +24,7 @@ import time
 import pickle
 import os
 import math
+import itertools
 
 from OpenGL.GLUT import (glutCreateWindow, glutDisplayFunc, glutIdleFunc,
                          glutInit, glutInitDisplayMode, glutInitWindowPosition,
@@ -69,7 +71,7 @@ from rainbowalga import version
 from km3pipe.dataclasses import Position
 from km3pipe.hardware import Detector
 from km3pipe.pumps import EvtPump
-from km3pipe.tools import pdg2name
+from km3pipe.tools import pdg2name, angle_between
 from km3pipe import constants
 
 from km3pipe.logger import logging
@@ -89,7 +91,7 @@ class RainbowAlga(object):
 
         if not detector_file:
             detector_file = os.path.join(current_path,
-                                         'data/km3net_jul13_90m_r1494.detx')
+                            'data/km3net_jul13_90m_r1494_corrected.detx')
 
         self.load_logo()
 
@@ -116,12 +118,13 @@ class RainbowAlga(object):
 
 
         self.blob = None
-        self.objects = []
+        self.objects = {}
         self.shaded_objects = []
 
         self.mouse_x = None
         self.mouse_y = None
 
+        self.show_secondaries = True
         self.show_help = False
         self._help_string = None
         self.show_info = True
@@ -141,13 +144,16 @@ class RainbowAlga(object):
         self.camera.target = Position((0, 0, z_shift))
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
-        self.pump = EvtPump(filename=event_file)
-        try:
-            self.load_blob(skip_to_blob)
-        except IndexError:
-            print("Could not load blob at index {0}".format(skip_to_blob))
-            print("Starting from the first one...")
-            self.load_blob(0)
+        if event_file:
+            self.pump = EvtPump(filename=event_file)
+            try:
+                self.load_blob(skip_to_blob)
+            except IndexError:
+                print("Could not load blob at index {0}".format(skip_to_blob))
+                print("Starting from the first one...")
+                self.load_blob(0)
+        else:
+            print("No event file specified. Only the detector will be shown.")
 
         self.clock.reset()
         self.timer.reset()
@@ -171,7 +177,7 @@ class RainbowAlga(object):
         print("Loading blob {0}...".format(index))
         blob = self.blob = self.pump.get_blob(index)
 
-        self.objects = []
+        self.objects = {}
         self.shaded_objects = []
 
         self.add_neutrino(blob)
@@ -346,7 +352,7 @@ class RainbowAlga(object):
                             0)
         particle.color = (1.0, 0.0, 0.0)
         particle.line_width = 3
-        self.objects.append(particle)
+        self.objects.setdefault("neutrinos", []).append(particle)
 
     def add_mc_tracks(self, blob):
         """Find MC particles and add them to the objects to render."""
@@ -361,18 +367,24 @@ class RainbowAlga(object):
             if track.particle_type in (0, 22):
                 # skip unknowns, photons
                 continue
+            if angle_between(highest_energetic_track.dir, track.dir) > 0.035:
+                # TODO: make this realistic!
+                # skip if angle too large
+                continue
             if track.particle_type not in (-11, 11, -13, 13, -15, 15):
                 # TODO: make this realistic!
                 track.length = 200 * track.E / highest_energy
             particle = Particle(track.pos.x, track.pos.y, track.pos.z,
                                 track.dir.x, track.dir.y, track.dir.z,
                                 track.time, constants.c, self.colourist,
-                                track.length)
+                                track.E, track.length)
+            particle.hidden = not self.show_secondaries
             if track.id == highest_energetic_track.id:
                 particle.color = (0.0, 1.0, 0.2)
                 particle.line_width = 3
                 particle.cherenkov_cone_enabled = True
-            self.objects.append(particle)
+                particle.hidden = False
+            self.objects.setdefault("mc_tracks", []).append(particle)
 
     def add_reco_tracks(self, blob):
         """Find reco particles and add them to the objects to render."""
@@ -387,7 +399,19 @@ class RainbowAlga(object):
                                    track.dir.x, track.dir.y, track.dir.z,
                                    constants.c, track.ts, track.te)
             print("Found track fit: {0}".format(track))
-            self.objects.append(particle)
+            self.objects.setdefault("reco_tracks", []).append(particle)
+
+    def toggle_secondaries(self):
+        self.show_secondaries = not self.show_secondaries
+
+        secondaries = self.objects["mc_tracks"]
+        for secondary in secondaries:
+            secondary.hidden = not self.show_secondaries
+
+        highest_energetic = max(secondaries, key=lambda s: s.energy)
+        if highest_energetic:
+            highest_energetic.hidden = False
+
 
     def load_next_blob(self):
         try:
@@ -492,7 +516,7 @@ class RainbowAlga(object):
 
         glDisable(GL_LIGHTING)
 
-        for obj in self.objects:
+        for obj in itertools.chain.from_iterable(self.objects.values()):
             obj.draw(self.clock.time)
 
         self.draw_gui()
@@ -543,9 +567,40 @@ class RainbowAlga(object):
         #glVertex2f(0, menubar_height)
         #glEnd()
 
+        try:
+            self.draw_colour_legend()
+        except TypeError:
+            pass
+
+        glPushMatrix()
+        glLoadIdentity()
+        glRasterPos(4, logo.size[1] + 4)
+        glDrawPixels(logo.size[0], logo.size[1], GL_RGB, GL_UNSIGNED_BYTE, logo_bytes)
+        glPopMatrix()
+
+        glMatrixMode(GL_PROJECTION)
+        glPopMatrix()
+        glMatrixMode(GL_MODELVIEW)
+
+        self.colourist.now_text()
+
+
+        #draw_text_2d("{0}ns".format(int(self.min_hit_time)), width - 80, 20)
+        #draw_text_2d("{0}ns".format(int(self.max_hit_time)), width - 80, height - menubar_height - 10)
+        #draw_text_2d("{0}ns".format(int((self.min_hit_time + self.max_hit_time) / 2)), width - 80, int(height/2))
+
+
+        if self.show_help:
+            self.display_help()
+
+        if self.show_info:
+            self.display_info()
+
+    def draw_colour_legend(self):
+        menubar_height = self.logo.size[1] + 4
+        width = glutGet(GLUT_WINDOW_WIDTH)
+        height = glutGet(GLUT_WINDOW_HEIGHT)
         # Colour legend
-
-
         left_x = width - 20
         right_x = width - 10
         min_y = menubar_height + 5
@@ -573,33 +628,6 @@ class RainbowAlga(object):
             for hit_time in hit_times:
                 segment_nr = hit_times.index(hit_time)
                 draw_text_2d("{0:>5}ns".format(hit_time), width - 80, (height - max_y) + segment_height * segment_nr)
-
-        glPushMatrix()
-        glLoadIdentity()
-        glRasterPos(4, logo.size[1] + 4)
-        glDrawPixels(logo.size[0], logo.size[1], GL_RGB, GL_UNSIGNED_BYTE, logo_bytes)
-        glPopMatrix()
-
-        glMatrixMode(GL_PROJECTION)
-        glPopMatrix()
-        glMatrixMode(GL_MODELVIEW)
-
-        self.colourist.now_text()
-
-
-        #draw_text_2d("{0}ns".format(int(self.min_hit_time)), width - 80, 20)
-        #draw_text_2d("{0}ns".format(int(self.max_hit_time)), width - 80, height - menubar_height - 10)
-        #draw_text_2d("{0}ns".format(int((self.min_hit_time + self.max_hit_time) / 2)), width - 80, int(height/2))
-
-        draw_text_2d("FPS:  {0:.1f}\nTime: {1:.0f} ns"
-                     .format(self.clock.fps, self.clock.time),
-                     10, 30)
-        if self.show_help:
-            self.display_help()
-
-        if self.show_info:
-            self.display_info()
-
 
     def resize(self, width, height):
         if width < 400:
@@ -657,6 +685,8 @@ class RainbowAlga(object):
             self.load_next_blob()
         if(key == 'p'):
             self.load_previous_blob()
+        if(key == 'u'):
+            self.toggle_secondaries()
         if(key == 't'):
             self.toggle_spectrum()
         if(key == 'x'):
@@ -722,7 +752,7 @@ class RainbowAlga(object):
         height = glutGet(GLUT_WINDOW_HEIGHT)
         pixelset = (GLubyte * (3*width*height))(0)
         glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixelset)
-        image = Image.fromstring(mode="RGB", size=(width, height), data=pixelset)
+        image = Image.frombytes(mode="RGB", size=(width, height), data=pixelset)
         image = image.transpose(Image.FLIP_TOP_BOTTOM)
         image.save(name)
         print("Screenshot saved as '{0}'.".format(name))
@@ -741,6 +771,7 @@ class RainbowAlga(object):
                 'a': 'enable/disable rotation animation',
                 'c': 'enable/disable Cherenkov cone',
                 't': 'toggle between spectra',
+                'u': 'toggle secondaries',
                 'x': 'cycle through colour schemes',
                 'm': 'toggle screen/print mode',
                 's': 'save screenshot (screenshot.png)',
@@ -781,6 +812,9 @@ class RainbowAlga(object):
         draw_text_2d(self.help_string, 10, pos_y)
 
     def display_info(self):
+        draw_text_2d("FPS:  {0:.1f}\nTime: {1:.0f} ns"
+                     .format(self.clock.fps, self.clock.time),
+                     10, 30)
         draw_text_2d(self.blob_info, 150, 30)
 
 
@@ -792,7 +826,7 @@ def main():
     try:
         min_tot = float(arguments['-t'])
     except TypeError:
-        min_tot = 27 
+        min_tot = 27
     try:
         skip_to_blob = int(arguments['-s'])
     except TypeError:
