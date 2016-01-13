@@ -748,7 +748,7 @@ class RainbowAlga(object):
             self.min_hit_time += (self.mouse_y - y) * 5
             self.max_hit_time += (self.mouse_y - y) * 5
             self.max_hit_time -= (self.mouse_x - x) * 5
-            self.min_hit_time += (self.mouse_x - x) * 5
+            #self.min_hit_time += (self.mouse_x - x) * 5
             self.min_hit_time = base_round(self.min_hit_time, 5)
             self.max_hit_time = base_round(self.max_hit_time, 5)
             if self.max_hit_time - self.min_hit_time < 100:
