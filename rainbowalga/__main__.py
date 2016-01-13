@@ -606,10 +606,14 @@ class RainbowAlga(object):
         min_y = menubar_height + 5
         max_y = height - 20
         n_steps = 10
-        round_to = 20
+        round_to = 10
         time_range = abs(self.max_hit_time - self.min_hit_time)
         time_step_size = base_round(time_range / n_steps, round_to)
-        hit_times = list(range(int(self.min_hit_time), int(self.max_hit_time), int(time_step_size)))
+        if time_step_size < 1:
+            time_step_size = 1
+        hit_times = list(range(int(self.min_hit_time),
+                               int(self.max_hit_time),
+                               int(time_step_size)))
         if len(hit_times) > 1:
             segment_height = int((max_y - min_y) / len(hit_times))
             glMatrixMode(GL_MODELVIEW)
@@ -741,12 +745,14 @@ class RainbowAlga(object):
             self.camera.rotate_z(self.mouse_x - x)
             self.camera.move_z(-(self.mouse_y - y)*8)
         if self.drag_mode == 'spectrum':
-            self.min_hit_time += (self.mouse_y - y) * 10
-            self.max_hit_time += (self.mouse_y - y) * 10
-            self.max_hit_time -= (self.mouse_x - x) * 10
-            self.min_hit_time += (self.mouse_x - x) * 10
-            self.min_hit_time = base_round(self.min_hit_time, 10)
-            self.max_hit_time = base_round(self.max_hit_time, 10)
+            self.min_hit_time += (self.mouse_y - y) * 5
+            self.max_hit_time += (self.mouse_y - y) * 5
+            self.max_hit_time -= (self.mouse_x - x) * 5
+            self.min_hit_time += (self.mouse_x - x) * 5
+            self.min_hit_time = base_round(self.min_hit_time, 5)
+            self.max_hit_time = base_round(self.max_hit_time, 5)
+            if self.max_hit_time - self.min_hit_time < 100:
+                self.min_hit_time = self.max_hit_time - 100
         self.mouse_x = x
         self.mouse_y = y
 
