@@ -205,10 +205,10 @@ class RainbowAlga(object):
                 log.warn("No hits left after applying cuts.")
                 return
 
-            #self.min_hit_time = min(hit_times)
-            #self.max_hit_time = max(hit_times)
-            self.min_hit_time = 0
-            self.max_hit_time = 2500
+            if self.min_hit_time == None:
+                self.min_hit_time = 0
+            if self.max_hit_time == None:
+                self.max_hit_time = 2500
 
             def spectrum(time, hit=None):
                 min_time = self.min_hit_time
