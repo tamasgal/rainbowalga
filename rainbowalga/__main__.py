@@ -81,7 +81,7 @@ log = logging.getLogger('rainbowalga')  # pylint: disable=C0103
 class RainbowAlga(object):
     def __init__(self, detector_file=None, event_file=None, min_tot=None,
                  skip_to_blob=0,
-                 width=700, height=500, x=50, y=50):
+                 width=1000, height=700, x=50, y=50):
         self.camera = Camera()
         self.camera.is_rotating = True
 
@@ -205,10 +205,8 @@ class RainbowAlga(object):
                 log.warn("No hits left after applying cuts.")
                 return
 
-            if self.min_hit_time == None:
-                self.min_hit_time = 0
-            if self.max_hit_time == None:
-                self.max_hit_time = 2500
+            self.min_hit_time = min(hit_times)
+            self.max_hit_time = max(hit_times)
 
             def spectrum(time, hit=None):
                 min_time = self.min_hit_time
@@ -222,7 +220,7 @@ class RainbowAlga(object):
                 return tuple(self.cmap(progress))[:3]
             self.spectrum = spectrum
 
-        if style == 'time_residuals':
+        if style == 'time_residuals_point_source' or style == 'time_residuals_cherenkov_cone':
             try:
                 track_ins = blob['TrackIns']
             except KeyError:
@@ -235,14 +233,15 @@ class RainbowAlga(object):
                 self.current_spectrum = "default"
                 return
 
-            vertex_pos = most_energetic_muon.pos
-            muon_dir = most_energetic_muon.dir
 
             hits = self.extract_hits(blob)
             hits = self.first_om_hits(hits)
 
             def cherenkov_time(pmt_pos):
                 """Calculates Cherenkov arrival time in [ns]"""
+                vertex_pos = most_energetic_muon.pos
+                muon_dir = most_energetic_muon.dir
+
                 v = pmt_pos - vertex_pos
                 l = v.dot(muon_dir)
                 k = np.sqrt(v.dot(v) - l**2)
@@ -251,6 +250,18 @@ class RainbowAlga(object):
                 t_cherenkov = 1/constants.c * (l - k/np.tan(theta)) + 1 /v_g * k/np.sin(theta)
                 return t_cherenkov * 1e9
 
+            def point_source_time(pmt_pos):
+                """Calculates cherenkov arrival time with cascade hypothesis"""
+                vertex_pos = blob['Neutrino'].pos
+
+                v = pmt_pos - vertex_pos
+                v = np.sqrt(v.dot(v))
+                v_g = constants.c_water_antares
+                t_cherenkov = v / v_g
+                return t_cherenkov * 1e9 + blob['Neutrino'].time
+
+
+
             self.min_hit_time = -100
             self.max_hit_time = 100
 
@@ -258,7 +269,10 @@ class RainbowAlga(object):
                 if hit:
                     pmt_pos = self.detector.pmt_with_id(hit.pmt_id).pos
                     if not hit.t_cherenkov:
-                        t_cherenkov = cherenkov_time(pmt_pos)
+                        if style == 'time_residuals_point_source':
+                            t_cherenkov = point_source_time(pmt_pos)
+                        elif style == 'time_residuals_cherenkov_cone':
+                            t_cherenkov = cherenkov_time(pmt_pos)
                         hit.t_cherenkov = t_cherenkov
                         log.debug("Hit time: {0}, Expected: {1}, Time Residual: {2}"
                               .format(time, t_cherenkov, time - t_cherenkov))
@@ -277,8 +291,13 @@ class RainbowAlga(object):
 
     def toggle_spectrum(self):
         if self.current_spectrum == 'default':
-            self.current_spectrum = 'time_residuals'
+            print('cherenkov')
+            self.current_spectrum = 'time_residuals_cherenkov_cone'
+        elif self.current_spectrum == 'time_residuals_cherenkov_cone':
+            print('cherenkov')
+            self.current_spectrum = 'time_residuals_point_source'
         else:
+            print('default')
             self.current_spectrum = 'default'
         self.reload_blob()
 
@@ -607,23 +626,8 @@ class RainbowAlga(object):
         right_x = width - 10
         min_y = menubar_height + 5
         max_y = height - 20
-        n_steps = 10
-        round_to = 10
-        time_range = abs(self.max_hit_time - self.min_hit_time)
-        if time_range < 300:
-            round_to = 5
-        if time_range < 100:
-            round_to = 2
-        range_min = base_round(self.min_hit_time, round_to)
-        range_max = base_round(self.max_hit_time, round_to)
-        time_range = abs(range_max - range_min)
-        time_step_size = base_round(time_range / n_steps, round_to)
-        range_max = range_min + n_steps * time_step_size;
-        if time_step_size < 1:
-            time_step_size = 1
-        hit_times = list(range(int(range_min),
-                               int(range_max),
-                               int(time_step_size)))
+        time_step_size = math.ceil(self.max_hit_time / 20 / 50) * 50
+        hit_times = list(range(int(self.min_hit_time), int(self.max_hit_time), int(time_step_size)))
         if len(hit_times) > 1:
             segment_height = int((max_y - min_y) / len(hit_times))
             glMatrixMode(GL_MODELVIEW)
@@ -641,14 +645,10 @@ class RainbowAlga(object):
             glEnd()
 
             # Colour legend labels
-            segment_nr = 0
             self.colourist.now_text()
             for hit_time in hit_times:
                 segment_nr = hit_times.index(hit_time)
                 draw_text_2d("{0:>5}ns".format(hit_time), width - 80, (height - max_y) + segment_height * segment_nr)
-            hit_time = hit_times[-1] + time_step_size
-            segment_nr += 1
-            draw_text_2d("{0:>5}ns".format(hit_time), width - 80, (height - max_y) + segment_height * segment_nr)
 
     def resize(self, width, height):
         if width < 400:
@@ -697,10 +697,10 @@ class RainbowAlga(object):
         if(key == "-"):
             self.camera.distance = self.camera.distance + 50
         if(key == "."):
-            self.min_tot += 1
+            self.min_tot += 0.5
             self.reload_blob()
         if(key == ","):
-            self.min_tot -= 1
+            self.min_tot -= 0.5
             self.reload_blob()
         if(key == 'n'):
             self.load_next_blob()
@@ -759,12 +759,12 @@ class RainbowAlga(object):
             self.camera.rotate_z(self.mouse_x - x)
             self.camera.move_z(-(self.mouse_y - y)*8)
         if self.drag_mode == 'spectrum':
-            self.min_hit_time += (self.mouse_y - y) * 5
-            self.max_hit_time += (self.mouse_y - y) * 5
+            self.min_hit_time += (self.mouse_y - y) * 10
+            self.max_hit_time += (self.mouse_y - y) * 10
             self.max_hit_time -= (self.mouse_x - x) * 10
-            #self.min_hit_time += (self.mouse_x - x) * 10
-            if self.max_hit_time - self.min_hit_time < 20:
-                self.max_hit_time = self.min_hit_time + 20
+            self.min_hit_time += (self.mouse_x - x) * 10
+            self.min_hit_time = base_round(self.min_hit_time, 10)
+            self.max_hit_time = base_round(self.max_hit_time, 10)
         self.mouse_x = x
         self.mouse_y = y
 
