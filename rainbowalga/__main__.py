@@ -220,7 +220,7 @@ class RainbowAlga(object):
                 return tuple(self.cmap(progress))[:3]
             self.spectrum = spectrum
 
-        if style == 'time_residuals':
+        if style == 'time_residuals_point_source' or style == 'time_residuals_cherenkov_cone':
             try:
                 track_ins = blob['TrackIns']
             except KeyError:
@@ -233,14 +233,15 @@ class RainbowAlga(object):
                 self.current_spectrum = "default"
                 return
 
-            vertex_pos = most_energetic_muon.pos
-            muon_dir = most_energetic_muon.dir
 
             hits = self.extract_hits(blob)
             hits = self.first_om_hits(hits)
 
             def cherenkov_time(pmt_pos):
                 """Calculates Cherenkov arrival time in [ns]"""
+                vertex_pos = most_energetic_muon.pos
+                muon_dir = most_energetic_muon.dir
+
                 v = pmt_pos - vertex_pos
                 l = v.dot(muon_dir)
                 k = np.sqrt(v.dot(v) - l**2)
@@ -249,6 +250,18 @@ class RainbowAlga(object):
                 t_cherenkov = 1/constants.c * (l - k/np.tan(theta)) + 1 /v_g * k/np.sin(theta)
                 return t_cherenkov * 1e9
 
+            def point_source_time(pmt_pos):
+                """Calculates cherenkov arrival time with cascade hypothesis"""
+                vertex_pos = blob['Neutrino'].pos
+
+                v = pmt_pos - vertex_pos
+                v = np.sqrt(v.dot(v))
+                v_g = constants.c_water_antares
+                t_cherenkov = v / v_g
+                return t_cherenkov * 1e9 + blob['Neutrino'].time
+
+
+
             self.min_hit_time = -100
             self.max_hit_time = 100
 
@@ -256,7 +269,10 @@ class RainbowAlga(object):
                 if hit:
                     pmt_pos = self.detector.pmt_with_id(hit.pmt_id).pos
                     if not hit.t_cherenkov:
-                        t_cherenkov = cherenkov_time(pmt_pos)
+                        if style == 'time_residuals_point_source':
+                            t_cherenkov = point_source_time(pmt_pos)
+                        elif style == 'time_residuals_cherenkov_cone':
+                            t_cherenkov = cherenkov_time(pmt_pos)
                         hit.t_cherenkov = t_cherenkov
                         log.debug("Hit time: {0}, Expected: {1}, Time Residual: {2}"
                               .format(time, t_cherenkov, time - t_cherenkov))
@@ -275,8 +291,13 @@ class RainbowAlga(object):
 
     def toggle_spectrum(self):
         if self.current_spectrum == 'default':
-            self.current_spectrum = 'time_residuals'
+            print('cherenkov')
+            self.current_spectrum = 'time_residuals_cherenkov_cone'
+        elif self.current_spectrum == 'time_residuals_cherenkov_cone':
+            print('cherenkov')
+            self.current_spectrum = 'time_residuals_point_source'
         else:
+            print('default')
             self.current_spectrum = 'default'
         self.reload_blob()
 
