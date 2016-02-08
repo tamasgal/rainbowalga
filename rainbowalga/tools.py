@@ -20,7 +20,7 @@ from .core import Position
 
 class Clock(object):
     """This class controls the time of the whole simulation.
-    
+
     :param float speed: Scale factor for simulation times
     :param float snooze_interval: Seconds to be snoozed
 
@@ -101,7 +101,7 @@ class Camera(object):
         self._pos = np.array((1, 1, 1))
         self.distance = distance
         self.is_rotating = False
-        
+
     @property
     def pos(self):
         self._pos = self._pos / np.linalg.norm(self._pos)
@@ -174,7 +174,7 @@ class CoordinateSystem(object):
 
 def draw_text_2d(text, x, y, line_height=17, color=None):
     """Draw a text at a given 2D position.
-    
+
     A very basic 2D drawing function for drawing (multi-line) text."
     """
     width = glutGet(GLUT_WINDOW_WIDTH)
@@ -188,7 +188,7 @@ def draw_text_2d(text, x, y, line_height=17, color=None):
     glPushMatrix()
     glLoadIdentity()
     if color:
-        glColor3f(*color)    
+        glColor3f(*color)
     glRasterPos2i(x, y)
     lines = 0
     for character in text:
@@ -204,12 +204,12 @@ def draw_text_2d(text, x, y, line_height=17, color=None):
 
 def draw_text_3d(text, x, y, z, color=None):
     """Draw a text at a given 3D position.
-    
+
     A very basic 3D drawing function for displaying text in a 3D scene.
     The multi-line support is experimental.
     """
     if color:
-        glColor3f(*color)    
+        glColor3f(*color)
     glRasterPos(x, y, z)
     for character in text:
         if character == '\n':
