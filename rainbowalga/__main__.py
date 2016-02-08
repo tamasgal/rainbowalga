@@ -70,7 +70,7 @@ from rainbowalga import version
 
 from km3pipe.dataclasses import Position
 from km3pipe.hardware import Detector
-from km3pipe.pumps import EvtPump
+from km3pipe.pumps import EvtPump, HDF5Pump
 from km3pipe.tools import pdg2name, angle_between
 from km3pipe import constants
 
@@ -145,7 +145,15 @@ class RainbowAlga(object):
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
         if event_file:
-            self.pump = EvtPump(filename=event_file)
+            if event_file.endswith('.evt'):
+                ThePump = EvtPump
+            elif event_file.endswith('.h5'):
+                ThePump = HDF5Pump
+            else:
+                log.critical("Filetype not supported: '{0}'".format(event_file))
+
+            self.pump = ThePump(filename=event_file)
+
             try:
                 self.load_blob(skip_to_blob)
             except IndexError:
@@ -267,7 +275,7 @@ class RainbowAlga(object):
 
             def spectrum(time, hit=None):
                 if hit:
-                    pmt_pos = self.detector.pmt_with_id(hit.pmt_id).pos
+                    pmt_pos = self._get_pmt_pos_from_hit(hit)
                     if not hit.t_cherenkov:
                         if style == 'time_residuals_point_source':
                             t_cherenkov = point_source_time(pmt_pos)
@@ -304,10 +312,14 @@ class RainbowAlga(object):
     def remove_hidden_hits(self, hits):
         om_hit_map = {}
         for hit in hits:
-            x, y, z = self.detector.pmt_with_id(hit.pmt_id).pos
+            x, y, z = self._get_pmt_pos_from_hit(hit)
             rb_hit = Hit(x, y, z, hit.time, hit.pmt_id, hit.id, hit.tot)
-            om_hit_map.setdefault(self.detector.pmtid2omkey(hit.pmt_id)[:2],
-                                  []).append(rb_hit)
+            try:  # EVT file
+                line_floor = self.detector.pmtid2omkey(hit.pmt_id)[:2]
+            except KeyError:  # Other files
+                line, floor, _ = self.detector.doms[hit.dom_id]
+                line_floor = line, floor
+            om_hit_map.setdefault(line_floor, []).append(rb_hit)
         hits = []
         for om, om_hits in om_hit_map.iteritems():
             largest_hit = None
@@ -332,10 +344,14 @@ class RainbowAlga(object):
         for hit in hits:
             if hit.time < 0:
                 continue
-            x, y, z = self.detector.pmt_with_id(hit.pmt_id).pos
+            x, y, z = self._get_pmt_pos_from_hit(hit)
             rb_hit = Hit(x, y, z, hit.time, hit.pmt_id, hit.id, hit.tot)
-            om_hit_map.setdefault(self.detector.pmtid2omkey(hit.pmt_id)[:2],
-                                  []).append(rb_hit)
+            try:  # EVT file
+                line_floor = self.detector.pmtid2omkey(hit.pmt_id)[:2]
+            except KeyError:  # Other files
+                line, floor, _ = self.detector.doms[hit.dom_id]
+                line_floor = line, floor
+            om_hit_map.setdefault(line_floor, []).append(rb_hit)
         hits = []
         for om, om_hits in om_hit_map.iteritems():
             first_hit = om_hits[0]
@@ -344,6 +360,13 @@ class RainbowAlga(object):
         print(
             "Number of first OM hits: {0}".format(len(hits)))
         return hits
+
+    def _get_pmt_pos_from_hit(self, hit):
+        try:
+            pos = self.detector.pmt_with_id(hit.pmt_id).pos
+        except KeyError:
+            pos = self.detector.get_pmt(hit.dom_id, hit.channel_id).pos
+        return pos
 
     def extract_hits(self, blob):
         try:
