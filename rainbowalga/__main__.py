@@ -346,11 +346,14 @@ class RainbowAlga(object):
         return hits
 
     def extract_hits(self, blob):
-        hits = blob['EvtRawHits']
+        try:
+            hits = blob['EvtRawHits']
+        except KeyError:
+            hits = blob['Hits']
+
         print("Number of hits: {0}".format(len(hits)))
         if self.min_tot:
-            hits = [hit for hit in blob['EvtRawHits'] if
-                    hit.tot > self.min_tot]
+            hits = [hit for hit in hits if hit.tot > self.min_tot]
             print("Number of hits after ToT={0} cut: {1}"
                   .format(self.min_tot, len(hits)))
         if not self.min_tot and len(hits) > 500:
