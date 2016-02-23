@@ -192,7 +192,10 @@ class RainbowAlga(object):
         self.objects = {}
         self.shaded_objects = []
 
-        self.add_neutrino(blob)
+        try:
+            self.add_neutrino(blob)
+        except TypeError:
+            pass
         self.add_mc_tracks(blob)
         self.add_reco_tracks(blob)
 
