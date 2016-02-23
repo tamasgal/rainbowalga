@@ -147,11 +147,17 @@ class RainbowAlga(object):
         if event_file:
             if event_file.endswith('.evt'):
                 ThePump = EvtPump
+                self._hits_key = 'EvtRawHits'
+                self._mc_tracks_key = 'TrackIns'
             elif event_file.endswith('.h5'):
                 ThePump = HDF5Pump
+                self._hits_key = 'Hits'
+                self._mc_tracks_key = 'MCTracks'
             elif event_file.endswith('.root'):
                 from km3pipe.pumps import AanetPump  # noqa
                 ThePump = AanetPump
+                self._hits_key = 'Hits'
+                self._mc_tracks_key = 'MCTracks'
             else:
                 log.critical("Filetype not supported: '{0}'".format(event_file))
                 raise SystemExit
@@ -239,7 +245,7 @@ class RainbowAlga(object):
 
         if style == 'time_residuals_point_source' or style == 'time_residuals_cherenkov_cone':
             try:
-                track_ins = blob['TrackIns']
+                track_ins = blob[self._hits_key]
             except KeyError:
                 log.error("No tracks found to determine Cherenkov parameters!")
                 self.current_spectrum = "default"
@@ -379,9 +385,10 @@ class RainbowAlga(object):
 
     def extract_hits(self, blob):
         try:
-            hits = blob['EvtRawHits']
+            hits = blob[self._hits_key]
         except KeyError:
-            hits = blob['Hits']
+            log.critical("No hits found!")
+            return
 
         print("Number of hits: {0}".format(len(hits)))
         if self.min_tot:
@@ -413,12 +420,9 @@ class RainbowAlga(object):
     def add_mc_tracks(self, blob):
         """Find MC particles and add them to the objects to render."""
         try:
-            track_ins = blob['TrackIns']
+            track_ins = blob[self._mc_tracks_key]
         except KeyError:
-            try:
-                track_ins = blob['MCTracks']
-            except KeyError:
-                return
+            return
 
         highest_energetic_track = max(track_ins, key=lambda t: t.E)
         highest_energy = highest_energetic_track.E
