@@ -415,7 +415,10 @@ class RainbowAlga(object):
         try:
             track_ins = blob['TrackIns']
         except KeyError:
-            return
+            try:
+                track_ins = blob['MCTracks']
+            except KeyError:
+                return
 
         highest_energetic_track = max(track_ins, key=lambda t: t.E)
         highest_energy = highest_energetic_track.E
@@ -446,7 +449,7 @@ class RainbowAlga(object):
         """Find reco particles and add them to the objects to render."""
         try:
             track_fits = blob['TrackFits']
-        except KeyError:
+        except (KeyError, TypeError):
             return
         for track in track_fits:
             if not int(track.id) == 314:
