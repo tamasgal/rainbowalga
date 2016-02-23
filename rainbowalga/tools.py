@@ -28,6 +28,7 @@ class Clock(object):
     def __init__(self, speed=1, snooze_interval=1):
         self.speed = speed
         self.snooze_interval = snooze_interval
+        self._global_offset = 0
         self.reset()
 
     @property
@@ -37,7 +38,7 @@ class Clock(object):
             current_time = self.paused_at
         else:
             current_time = self.unix_time()
-        return (current_time - self.offset) * self.speed
+        return (current_time - self.offset + self._global_offset) * self.speed
 
     def rewind(self, time):
         self.offset += time / self.speed

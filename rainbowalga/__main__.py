@@ -216,6 +216,8 @@ class RainbowAlga(object):
             self.min_hit_time = min(hit_times)
             self.max_hit_time = max(hit_times)
 
+            self.clock._global_offset = self.min_hit_time / self.clock.speed
+
             def spectrum(time, hit=None):
                 min_time = self.min_hit_time
                 max_time = self.max_hit_time
