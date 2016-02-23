@@ -154,6 +154,7 @@ class RainbowAlga(object):
                 ThePump = AanetPump
             else:
                 log.critical("Filetype not supported: '{0}'".format(event_file))
+                raise SystemExit
 
             self.pump = ThePump(filename=event_file)
 
