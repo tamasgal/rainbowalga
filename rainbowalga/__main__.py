@@ -149,6 +149,9 @@ class RainbowAlga(object):
                 ThePump = EvtPump
             elif event_file.endswith('.h5'):
                 ThePump = HDF5Pump
+            elif event_file.endswith('.root'):
+                from km3pipe.pumps import AanetPump  # noqa
+                ThePump = AanetPump
             else:
                 log.critical("Filetype not supported: '{0}'".format(event_file))
 
