@@ -268,8 +268,8 @@ class RainbowAlga(object):
                 v = pmt_pos - vertex_pos
                 l = v.dot(muon_dir)
                 k = np.sqrt(v.dot(v) - l**2)
-                v_g = constants.c_water_antares
-                theta = constants.theta_cherenkov_water_antares
+                v_g = constants.c_water_km3net
+                theta = constants.theta_cherenkov_water_km3net
                 t_cherenkov = 1/constants.c * (l - k/np.tan(theta)) + 1 /v_g * k/np.sin(theta)
                 return t_cherenkov * 1e9
 
@@ -350,8 +350,8 @@ class RainbowAlga(object):
                     hits.append(hit)
                     self.shaded_objects.append(hit)
                     largest_hit = hit
-        print(
-            "Number of hits after removing hidden ones: {0}".format(len(hits)))
+        print("Number of hits after removing hidden ones: {0}"
+              .format(len(hits)))
         return hits
 
     def first_om_hits(self, hits):
@@ -372,8 +372,7 @@ class RainbowAlga(object):
             first_hit = om_hits[0]
             self.shaded_objects.append(first_hit)
             hits.append(first_hit)
-        print(
-            "Number of first OM hits: {0}".format(len(hits)))
+        print("Number of first OM hits: {0}".format(len(hits)))
         return hits
 
     def _get_pmt_pos_from_hit(self, hit):
@@ -385,10 +384,9 @@ class RainbowAlga(object):
 
     def extract_hits(self, blob):
         try:
-            hits = blob[self._hits_key]
+            hits = blob['Hits']
         except KeyError:
-            log.critical("No hits found!")
-            return
+            raise SystemExit("No suitable hits found in the file!")
 
         print("Number of hits: {0}".format(len(hits)))
         if self.min_tot:
