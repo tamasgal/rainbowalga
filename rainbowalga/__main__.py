@@ -426,7 +426,10 @@ class RainbowAlga(object):
         except KeyError:
             return
 
-        highest_energetic_track = max(track_ins, key=lambda t: t.E)
+        try:
+            highest_energetic_track = max(track_ins, key=lambda t: t.E)
+        except ValueError:  # hdf5 mc tracks are not implemented yet
+            return
         highest_energy = highest_energetic_track.E
         for track in track_ins:
             if track.particle_type in (0, 22):
