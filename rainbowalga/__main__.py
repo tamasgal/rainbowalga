@@ -13,7 +13,7 @@ Options:
     EVENT_FILE         Event file (currently only EVT).
     -h --help          Show this screen.
     -v --version       Show version.
-    -d FILE            Detector file (DETX).
+    -d DETECTOR        Detector file (DETX) or detector ID (eg. D_ARCA003).
     -t MIN_TOT         ToT threshold in ns [default=30].
     -s INDEX           Skip to event at index [default=0].
 
@@ -135,7 +135,11 @@ class RainbowAlga(object):
         self.min_hit_time = None
         self.max_hit_time = None
 
-        self.detector = Detector(detector_file)
+        if detector_file.endswith('.detx'):
+            self.detector = Detector(filename=detector_file)
+        else:
+            self.detector = Detector(det_id=detector_file)
+
         dom_positions = self.detector.dom_positions
         min_z = min([z for x, y, z in dom_positions])
         max_z = max([z for x, y, z in dom_positions])
@@ -422,7 +426,10 @@ class RainbowAlga(object):
         except KeyError:
             return
 
-        highest_energetic_track = max(track_ins, key=lambda t: t.E)
+        try:
+            highest_energetic_track = max(track_ins, key=lambda t: t.E)
+        except ValueError:  # hdf5 mc tracks are not implemented yet
+            return
         highest_energy = highest_energetic_track.E
         for track in track_ins:
             if track.particle_type in (0, 22):
