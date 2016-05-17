@@ -71,7 +71,7 @@ from rainbowalga import version
 from km3pipe.dataclasses import Position
 from km3pipe.hardware import Detector
 from km3pipe.pumps import EvtPump, HDF5Pump
-from km3pipe.tools import pdg2name, angle_between
+from km3pipe.tools import pdg2name, angle_between, iteritems
 from km3pipe import constants
 
 from km3pipe.logger import logging
@@ -340,7 +340,7 @@ class RainbowAlga(object):
                 line_floor = line, floor
             om_hit_map.setdefault(line_floor, []).append(rb_hit)
         hits = []
-        for om, om_hits in om_hit_map.iteritems():
+        for om, om_hits in iteritems(om_hit_map):
             largest_hit = None
             for hit in om_hits:
                 if largest_hit:
@@ -372,7 +372,7 @@ class RainbowAlga(object):
                 line_floor = line, floor
             om_hit_map.setdefault(line_floor, []).append(rb_hit)
         hits = []
-        for om, om_hits in om_hit_map.iteritems():
+        for om, om_hits in iteritems(om_hit_map):
             first_hit = om_hits[0]
             self.shaded_objects.append(first_hit)
             hits.append(first_hit)
