@@ -68,11 +68,10 @@ from rainbowalga.gui import Colourist
 from rainbowalga import constants
 from rainbowalga import version
 
-from km3pipe.dataclasses import Position
+from km3pipe.dataclasses import Position, Direction
 from km3pipe.hardware import Detector
-from km3pipe.pumps import EvtPump, HDF5Pump
 from km3pipe.tools import pdg2name, angle_between, iteritems
-from km3pipe import constants
+from km3pipe import constants, GenericPump, Geometry
 
 from km3pipe.logger import logging
 log = logging.getLogger('rainbowalga')  # pylint: disable=C0103
@@ -137,8 +136,10 @@ class RainbowAlga(object):
 
         if detector_file.endswith('.detx'):
             self.detector = Detector(filename=detector_file)
+            self.geometry = Geometry(filename=detector_file)
         else:
             self.detector = Detector(det_id=detector_file)
+            self.geometry = Geometry(det_id=detector_file)
 
         dom_positions = self.detector.dom_positions
         min_z = min([z for x, y, z in dom_positions])
@@ -149,24 +150,7 @@ class RainbowAlga(object):
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
         if event_file:
-            if event_file.endswith('.evt'):
-                ThePump = EvtPump
-                self._hits_key = 'EvtRawHits'
-                self._mc_tracks_key = 'TrackIns'
-            elif event_file.endswith('.h5'):
-                ThePump = HDF5Pump
-                self._hits_key = 'Hits'
-                self._mc_tracks_key = 'MCTracks'
-            elif event_file.endswith('.root'):
-                from km3pipe.pumps import AanetPump  # noqa
-                ThePump = AanetPump
-                self._hits_key = 'Hits'
-                self._mc_tracks_key = 'MCTracks'
-            else:
-                log.critical("Filetype not supported: '{0}'".format(event_file))
-                raise SystemExit
-
-            self.pump = ThePump(filename=event_file)
+            self.pump = GenericPump(event_file)
 
             try:
                 self.load_blob(skip_to_blob)
@@ -219,6 +203,7 @@ class RainbowAlga(object):
         if style == 'default':
             hits = self.extract_hits(blob)
             hits = self.remove_hidden_hits(hits)
+
 
             hit_times = []
             #step_size = int(len(hits) / 100) + 1
@@ -389,6 +374,7 @@ class RainbowAlga(object):
     def extract_hits(self, blob):
         try:
             hits = blob['Hits']
+            self.geometry.apply(hits)
         except KeyError:
             raise SystemExit("No suitable hits found in the file!")
 
@@ -421,31 +407,41 @@ class RainbowAlga(object):
 
     def add_mc_tracks(self, blob):
         """Find MC particles and add them to the objects to render."""
+        return
         try:
-            track_ins = blob[self._mc_tracks_key]
+            track_ins = blob['MCTracks']
         except KeyError:
             return
 
         try:
             highest_energetic_track = max(track_ins, key=lambda t: t.E)
-        except ValueError:  # hdf5 mc tracks are not implemented yet
-            return
-        highest_energy = highest_energetic_track.E
+            highest_energy = highest_energetic_track.E
+        except AttributeError:  # hdf5 mc tracks are not implemented yet
+            highest_energetic_track = max(track_ins, key=lambda t: t.energy)
+            highest_energy = highest_energetic_track.energy
+
         for track in track_ins:
-            if track.particle_type in (0, 22):
-                # skip unknowns, photons
+            try:  # legacy format from EVT
+                particle_type = track.particle_type
+                energy = track.E
+                track_length = track.length
+            except AttributeError:  # new format
+                particle_type = track.type
+                energy = track.energy
+                track_length = 1e6  # mmmmhhh
+            if particle_type in (0, 22): # skip unknowns, photons
                 continue
             if angle_between(highest_energetic_track.dir, track.dir) > 0.035:
                 # TODO: make this realistic!
                 # skip if angle too large
                 continue
-            if track.particle_type not in (-11, 11, -13, 13, -15, 15):
+            if particle_type not in (-11, 11, -13, 13, -15, 15):
                 # TODO: make this realistic!
-                track.length = 200 * track.E / highest_energy
-            particle = Particle(track.pos.x, track.pos.y, track.pos.z,
-                                track.dir.x, track.dir.y, track.dir.z,
+                track_length = 200 * energy / highest_energy
+            particle = Particle(track.pos[0], track.pos[1], track.pos[2],
+                                track.dir[0], track.dir[1], track.dir[2],
                                 track.time, constants.c, self.colourist,
-                                track.E, track.length)
+                                energy, track_length)
             particle.hidden = not self.show_secondaries
             if track.id == highest_energetic_track.id:
                 particle.color = (0.0, 1.0, 0.2)
@@ -457,17 +453,31 @@ class RainbowAlga(object):
     def add_reco_tracks(self, blob):
         """Find reco particles and add them to the objects to render."""
         try:
-            track_fits = blob['TrackFits']
+            reco = blob['RecoTrack']
         except (KeyError, TypeError):
             return
-        for track in track_fits:
-            if not int(track.id) == 314:
-                continue
-            particle = ParticleFit(track.pos.x, track.pos.y, track.pos.z,
-                                   track.dir.x, track.dir.y, track.dir.z,
-                                   constants.c, track.ts, track.te)
-            print("Found track fit: {0}".format(track))
-            self.objects.setdefault("reco_tracks", []).append(particle)
+        particle = ParticleFit(track.pos.x, track.pos.y, track.pos.z,
+                               track.dir.x, track.dir.y, track.dir.z,
+                               constants.c, track.ts, track.te)
+#       dir = Direction((-0.05529533412, -0.1863083737, -0.9809340528))
+#       pos = Position(( 128.9671546, 135.4618441, 397.8256624))
+#       self.camera.target = Position(( 128.9671546, 135.4618441, 397.8256624))
+#       # pos.z += 405.93
+#       offset = 0
+#       pos = pos + offset*dir
+#       t_offset = offset / constants.c_water_km3net * 1e9
+#       #t_0 = 86355000.1 - t_offset
+#       t_0 = 86358182.1
+#       print(t_offset)
+#       print(t_0)
+#       print(constants.c)
+#       particle = Particle(pos.x, pos.y, pos.z,
+#                              dir.x, dir.y, dir.z, t_0,
+#                              constants.c, self.colourist, 1e4)
+#       # particle.cherenkov_cone_enabled = True
+        particle.hidden = False
+        particle.line_width = 3
+        self.objects.setdefault("reco_tracks", []).append(particle)
 
     def toggle_secondaries(self):
         self.show_secondaries = not self.show_secondaries
