@@ -141,7 +141,7 @@ class RainbowAlga(object):
             self.detector = Detector(det_id=detector_file)
             self.geometry = Geometry(det_id=detector_file)
 
-        dom_positions = self.detector.dom_positions
+        dom_positions = self.detector.dom_positions.values()
         min_z = min([z for x, y, z in dom_positions])
         max_z = max([z for x, y, z in dom_positions])
         z_shift = (max_z - min_z) / 2
@@ -407,10 +407,10 @@ class RainbowAlga(object):
 
     def add_mc_tracks(self, blob):
         """Find MC particles and add them to the objects to render."""
-        return
         try:
-            track_ins = blob['MCTracks']
+            track_ins = blob['McTracks']
         except KeyError:
+            print("No MCTracks found.")
             return
 
         try:
