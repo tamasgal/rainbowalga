@@ -70,7 +70,9 @@ from rainbowalga import version
 
 from km3pipe.dataclasses import Position, Direction
 from km3pipe.hardware import Detector
-from km3pipe.tools import pdg2name, angle_between, iteritems
+from km3pipe.mc import pdg2name
+from km3pipe.dev import iteritems
+from km3pipe.math import angle_between
 from km3pipe import constants, GenericPump, Geometry
 
 from km3pipe.logger import logging
@@ -429,19 +431,20 @@ class RainbowAlga(object):
                 particle_type = track.type
                 energy = track.energy
                 track_length = 1e6  # mmmmhhh
+            print("Track length: {0}".format(track_length))
             if particle_type in (0, 22): # skip unknowns, photons
                 continue
             if angle_between(highest_energetic_track.dir, track.dir) > 0.035:
                 # TODO: make this realistic!
                 # skip if angle too large
                 continue
-            if particle_type not in (-11, 11, -13, 13, -15, 15):
-                # TODO: make this realistic!
-                track_length = 200 * energy / highest_energy
+#            if particle_type not in (-11, 11, -13, 13, -15, 15):
+#                # TODO: make this realistic!
+#                track_length = 200 * energy / highest_energy
             particle = Particle(track.pos[0], track.pos[1], track.pos[2],
                                 track.dir[0], track.dir[1], track.dir[2],
                                 track.time, constants.c, self.colourist,
-                                energy, track_length)
+                                energy, length=0)
             particle.hidden = not self.show_secondaries
             if track.id == highest_energetic_track.id:
                 particle.color = (0.0, 1.0, 0.2)
