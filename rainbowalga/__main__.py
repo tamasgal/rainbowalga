@@ -76,7 +76,7 @@ from km3pipe.io import GenericPump
 
 from km3pipe.logger import logging
 log = logging.getLogger('rainbowalga')  # pylint: disable=C0103
-log.setLevel("DEBUG")
+# log.setLevel("DEBUG")
 
 
 class RainbowAlga(object):
@@ -312,8 +312,12 @@ class RainbowAlga(object):
         self.reload_blob()
 
     def remove_hidden_hits(self, hits):
-        log.debug("Skipping hidden hits")
+        log.debug("Skipping removing hidden hits")
+        for hit in hits:
+            rb_hit = Hit(hit.pos_x, hit.pos_y, hit.pos_z, hit.time, 0, 0, hit.tot)
+            self.shaded_objects.append(rb_hit)
         return hits
+
         log.debug("Removing hidden hits")
         om_hit_map = {}
         om_combs = set(zip(hits.du, hits.floor))
