@@ -76,6 +76,7 @@ from km3pipe.io import GenericPump
 
 from km3pipe.logger import logging
 log = logging.getLogger('rainbowalga')  # pylint: disable=C0103
+log.setLevel("DEBUG")
 
 
 class RainbowAlga(object):
@@ -204,10 +205,7 @@ class RainbowAlga(object):
             hits = self.extract_hits(blob)
             hits = self.remove_hidden_hits(hits)
 
-            hit_times = []
-            for hit in hits:
-                if hit.time > 0:
-                    hit_times.append(hit.time)
+            hit_times = hits.time
 
             if len(hit_times) == 0:
                 log.warn("No hits left after applying cuts.")
@@ -314,15 +312,18 @@ class RainbowAlga(object):
         self.reload_blob()
 
     def remove_hidden_hits(self, hits):
+        log.debug("Skipping hidden hits")
+        return hits
+        log.debug("Removing hidden hits")
         om_hit_map = {}
+        om_combs = set(zip(hits.du, hits.floor))
+        for om_comb in om_combs:
+            du, floor = om_comb
+            om_hit_map[om_comb] = hits[(hits.du == du) & (hits.floor == floor)]
+        print(om_hit_map)
         for hit in hits:
-            x, y, z = self._get_pmt_pos_from_hit(hit)
+            x, y, z = hit.pos_x, hit.pos_y, hit.pos_z
             rb_hit = Hit(x, y, z, hit.time, hit.pmt_id, hit.id, hit.tot)
-            try:  # EVT file
-                line_floor = self.detector.pmtid2omkey(hit.pmt_id)[:2]
-            except KeyError:  # Other files
-                line, floor, _ = self.detector.doms[hit.dom_id]
-                line_floor = line, floor
             om_hit_map.setdefault(line_floor, []).append(rb_hit)
         hits = []
         for om, om_hits in iteritems(om_hit_map):
@@ -344,6 +345,8 @@ class RainbowAlga(object):
         return hits
 
     def first_om_hits(self, hits):
+        log.debug("Entering first_om_hits()")
+        print(hits.time)
         om_hit_map = {}
         for hit in hits:
             if hit.time < 0:
@@ -364,31 +367,23 @@ class RainbowAlga(object):
         print("Number of first OM hits: {0}".format(len(hits)))
         return hits
 
-    def _get_pmt_pos_from_hit(self, hit):
-        try:
-            pos = self.detector.pmt_with_id(hit.pmt_id).pos
-        except KeyError:
-            pos = self.detector.get_pmt(hit.dom_id, hit.channel_id).pos
-        return pos
-
     def extract_hits(self, blob):
+        log.debug("Entering extract_hits()")
         try:
-            hits = blob['Hits']
-            self.geometry.apply(hits)
+            hits = self.geometry.apply(blob['Hits'])
         except KeyError:
             raise SystemExit("No suitable hits found in the file!")
 
         print("Number of hits: {0}".format(len(hits)))
         if self.min_tot:
-            hits = [hit for hit in hits if hit.tot > self.min_tot]
+            hits = hits[hits.tot > self.min_tot]
             print("Number of hits after ToT={0} cut: {1}"
                   .format(self.min_tot, len(hits)))
         if not self.min_tot and len(hits) > 500:
             print("Warning: consider applying a ToT filter to reduce the "
                   "amount of hits, according to your graphic cards "
                   "performance!")
-        hits.sort(key=lambda h: h.time)
-        return hits
+        return hits.sorted()
 
     def add_neutrino(self, blob):
         """Add the neutrino to the scene."""
@@ -727,41 +722,42 @@ class RainbowAlga(object):
             self.camera.distance = self.camera.distance - 2
 
     def keyboard(self, key,  x,  y):
-        if(key == "r"):
+        log.debug("Key {} pressed".format(key))
+        if(key == b"r"):
             self.clock.reset()
-        if(key == "h"):
+        if(key == b"h"):
             self.show_help = not self.show_help
-        if(key == 'i'):
+        if(key == b'i'):
             self.show_info = not self.show_info
-        if(key == "+"):
+        if(key == b"+"):
             self.camera.distance = self.camera.distance - 50
-        if(key == "-"):
+        if(key == b"-"):
             self.camera.distance = self.camera.distance + 50
-        if(key == "."):
+        if(key == b"."):
             self.min_tot += 0.5
             self.reload_blob()
-        if(key == ","):
+        if(key == b","):
             self.min_tot -= 0.5
             self.reload_blob()
-        if(key == 'n'):
+        if(key == b'n'):
             self.load_next_blob()
-        if(key == 'p'):
+        if(key == b'p'):
             self.load_previous_blob()
-        if(key == 'u'):
+        if(key == b'u'):
             self.toggle_secondaries()
-        if(key == 't'):
+        if(key == b't'):
             self.toggle_spectrum()
-        if(key == 'x'):
+        if(key == b'x'):
             self.cmap = self.colourist.next_cmap
-        if(key == 'm'):
+        if(key == b'm'):
             self.colourist.print_mode = not self.colourist.print_mode
             self.load_logo()
-        if(key == 'a'):
+        if(key == b'a'):
             self.camera.is_rotating = not self.camera.is_rotating
-        if(key == 'c'):
+        if(key == b'c'):
             self.colourist.cherenkov_cone_enabled = \
                 not self.colourist.cherenkov_cone_enabled
-        if(key == "s"):
+        if(key == b"s"):
             event_number = self.blob['start_event'][0]
             try:
                 neutrino = self.blob['Neutrino']
@@ -778,15 +774,15 @@ class RainbowAlga(object):
                     )
 
             self.save_screenshot(screenshot_name)
-        if(key == 'v'):
+        if(key == b'v'):
             self.frame_index = 0
             self.is_recording = not self.is_recording
-        if(key == " "):
+        if(key == b" "):
             if self.clock.is_paused:
                 self.clock.resume()
             else:
                 self.clock.pause()
-        if(key in ('q', chr(27))):
+        if(key in (b'q', b'\x1b')):
             raise SystemExit
 
     def special_keyboard(self, key, x, z):
