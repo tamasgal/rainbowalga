@@ -20,7 +20,6 @@ Options:
 """
 from __future__ import division, absolute_import, print_function
 
-import pdb
 import os
 import math
 import itertools
@@ -669,7 +668,6 @@ class RainbowAlga(object):
         hit_times = list(range(int(self.min_hit_time),
                                int(self.max_hit_time),
                                int(time_step_size)))
-        pdb.set_trace()
         if len(hit_times) > 1:
             segment_height = int((max_y - min_y) / len(hit_times))
             glMatrixMode(GL_MODELVIEW)
