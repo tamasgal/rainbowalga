@@ -20,8 +20,6 @@ Options:
 """
 from __future__ import division, absolute_import, print_function
 
-import time
-import pickle
 import os
 import math
 import itertools
@@ -51,7 +49,7 @@ from OpenGL.GL import (glBegin, glClear, glClearColor, glClearDepth, glColor3f,
                        GL_SPECULAR, GL_POSITION, GL_FRONT, GL_SHININESS,
                        GL_VERSION, GL_VERTEX_SHADER, GL_FRAGMENT_SHADER,
                        GL_VERTEX_ARRAY, GL_POINTS, GL_DEPTH_TEST,
-                       GL_LINE_SMOOTH, GL_FLAT, GL_MODELVIEW, GL_CULL_FACE,
+                       GL_LINE_SMOOTH, GL_FLAT, GL_MODELVIEW,
                        GL_QUADS, GL_RGB, GL_UNSIGNED_BYTE, GL_SMOOTH,
                        GL_BLEND, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 from OpenGL.arrays import vbo
@@ -63,18 +61,22 @@ import numpy as np
 from PIL import Image
 
 from rainbowalga.tools import Clock, Camera, draw_text_2d, base_round
-from rainbowalga.physics import Particle, ParticleFit, Neutrino, Hit
+from rainbowalga.physics import Particle, Neutrino, Hit
 from rainbowalga.gui import Colourist
 from rainbowalga import constants
 from rainbowalga import version
 
-from km3pipe.dataclasses import Position, Direction
+from km3pipe.dataclasses import Position
 from km3pipe.hardware import Detector
-from km3pipe.tools import pdg2name, angle_between, iteritems
-from km3pipe import constants, GenericPump, Geometry
+from km3pipe.mc import pdg2name
+from km3pipe.dev import iteritems
+from km3pipe.math import angle_between
+from km3pipe import Geometry
+from km3pipe.io import GenericPump
 
 from km3pipe.logger import logging
 log = logging.getLogger('rainbowalga')  # pylint: disable=C0103
+# log.setLevel("DEBUG")
 
 
 class RainbowAlga(object):
@@ -89,8 +91,8 @@ class RainbowAlga(object):
         current_path = os.path.dirname(os.path.abspath(__file__))
 
         if not detector_file:
-            detector_file = os.path.join(current_path,
-                            'data/km3net_jul13_90m_r1494_corrected.detx')
+            filepath = 'data/km3net_jul13_90m_r1494_corrected.detx'
+            detector_file = os.path.join(current_path, filepath)
 
         self.load_logo()
 
@@ -114,7 +116,6 @@ class RainbowAlga(object):
         }""", GL_FRAGMENT_SHADER)
 
         self.shader = compileProgram(VERTEX_SHADER, FRAGMENT_SHADER)
-
 
         self.blob = None
         self.objects = {}
@@ -141,11 +142,11 @@ class RainbowAlga(object):
             self.detector = Detector(det_id=detector_file)
             self.geometry = Geometry(det_id=detector_file)
 
-        dom_positions = self.detector.dom_positions
-        min_z = min([z for x, y, z in dom_positions])
-        max_z = max([z for x, y, z in dom_positions])
+        dom_pos = self.detector.dom_positions.values()
+        min_z = min([z for x, y, z in dom_pos])
+        max_z = max([z for x, y, z in dom_pos])
         z_shift = (max_z - min_z) / 2
-        self.dom_positions = np.array([tuple(pos) for pos in dom_positions], 'f')
+        self.dom_positions = np.array([tuple(pos) for pos in dom_pos], 'f')
         self.camera.target = Position((0, 0, z_shift))
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
@@ -204,12 +205,7 @@ class RainbowAlga(object):
             hits = self.extract_hits(blob)
             hits = self.remove_hidden_hits(hits)
 
-
-            hit_times = []
-            #step_size = int(len(hits) / 100) + 1
-            for hit in hits:
-                if hit.time > 0:
-                    hit_times.append(hit.time)
+            hit_times = hits.time
 
             if len(hit_times) == 0:
                 log.warn("No hits left after applying cuts.")
@@ -232,7 +228,8 @@ class RainbowAlga(object):
                 return tuple(self.cmap(progress))[:3]
             self.spectrum = spectrum
 
-        if style == 'time_residuals_point_source' or style == 'time_residuals_cherenkov_cone':
+        if style in ['time_residuals_point_source',
+                     'time_residuals_cherenkov_cone']:
             try:
                 track_ins = blob[self._hits_key]
             except KeyError:
@@ -240,11 +237,11 @@ class RainbowAlga(object):
                 self.current_spectrum = "default"
                 return
             most_energetic_muon = max(track_ins, key=lambda t: t.E)
-            if not pdg2name(most_energetic_muon.particle_type) in ['mu-', 'mu+']:
+            if not pdg2name(most_energetic_muon.particle_type)  \
+                    in ['mu-', 'mu+']:
                 log.error("No muon found to determine Cherenkov parameters!")
                 self.current_spectrum = "default"
                 return
-
 
             hits = self.extract_hits(blob)
             hits = self.first_om_hits(hits)
@@ -259,8 +256,10 @@ class RainbowAlga(object):
                 k = np.sqrt(v.dot(v) - l**2)
                 v_g = constants.c_water_km3net
                 theta = constants.theta_cherenkov_water_km3net
-                t_cherenkov = 1/constants.c * (l - k/np.tan(theta)) + 1 /v_g * k/np.sin(theta)
-                return t_cherenkov * 1e9
+                a_1 = k / np.tan(theta)
+                a_2 = k / np.sin(theta)
+                t_c = 1 / constants.c * (l - a_1) + 1 / v_g * a_2
+                return t_c * 1e9
 
             def point_source_time(pmt_pos):
                 """Calculates cherenkov arrival time with cascade hypothesis"""
@@ -269,10 +268,8 @@ class RainbowAlga(object):
                 v = pmt_pos - vertex_pos
                 v = np.sqrt(v.dot(v))
                 v_g = constants.c_water_antares
-                t_cherenkov = v / v_g
-                return t_cherenkov * 1e9 + blob['Neutrino'].time
-
-
+                t_c = v / v_g
+                return t_c * 1e9 + blob['Neutrino'].time
 
             self.min_hit_time = -100
             self.max_hit_time = 100
@@ -282,12 +279,13 @@ class RainbowAlga(object):
                     pmt_pos = self._get_pmt_pos_from_hit(hit)
                     if not hit.t_cherenkov:
                         if style == 'time_residuals_point_source':
-                            t_cherenkov = point_source_time(pmt_pos)
+                            t_c = point_source_time(pmt_pos)
                         elif style == 'time_residuals_cherenkov_cone':
-                            t_cherenkov = cherenkov_time(pmt_pos)
-                        hit.t_cherenkov = t_cherenkov
-                        log.debug("Hit time: {0}, Expected: {1}, Time Residual: {2}"
-                              .format(time, t_cherenkov, time - t_cherenkov))
+                            t_c = cherenkov_time(pmt_pos)
+                        hit.t_cherenkov = t_c
+                        log.debug("Hit time: {0}, Expected: {1}, "
+                                  "Time Residual: {2}"
+                                  .format(time, t_c, time - t_c))
                     time = time - hit.t_cherenkov
 
                 diff = self.max_hit_time - self.min_hit_time
@@ -314,15 +312,22 @@ class RainbowAlga(object):
         self.reload_blob()
 
     def remove_hidden_hits(self, hits):
-        om_hit_map = {}
+        log.debug("Skipping removing hidden hits")
         for hit in hits:
-            x, y, z = self._get_pmt_pos_from_hit(hit)
+            rb_hit = Hit(hit.pos_x, hit.pos_y, hit.pos_z, hit.time, 0, 0, hit.tot)
+            self.shaded_objects.append(rb_hit)
+        return hits
+
+        log.debug("Removing hidden hits")
+        om_hit_map = {}
+        om_combs = set(zip(hits.du, hits.floor))
+        for om_comb in om_combs:
+            du, floor = om_comb
+            om_hit_map[om_comb] = hits[(hits.du == du) & (hits.floor == floor)]
+        print(om_hit_map)
+        for hit in hits:
+            x, y, z = hit.pos_x, hit.pos_y, hit.pos_z
             rb_hit = Hit(x, y, z, hit.time, hit.pmt_id, hit.id, hit.tot)
-            try:  # EVT file
-                line_floor = self.detector.pmtid2omkey(hit.pmt_id)[:2]
-            except KeyError:  # Other files
-                line, floor, _ = self.detector.doms[hit.dom_id]
-                line_floor = line, floor
             om_hit_map.setdefault(line_floor, []).append(rb_hit)
         hits = []
         for om, om_hits in iteritems(om_hit_map):
@@ -344,6 +349,8 @@ class RainbowAlga(object):
         return hits
 
     def first_om_hits(self, hits):
+        log.debug("Entering first_om_hits()")
+        print(hits.time)
         om_hit_map = {}
         for hit in hits:
             if hit.time < 0:
@@ -364,31 +371,23 @@ class RainbowAlga(object):
         print("Number of first OM hits: {0}".format(len(hits)))
         return hits
 
-    def _get_pmt_pos_from_hit(self, hit):
-        try:
-            pos = self.detector.pmt_with_id(hit.pmt_id).pos
-        except KeyError:
-            pos = self.detector.get_pmt(hit.dom_id, hit.channel_id).pos
-        return pos
-
     def extract_hits(self, blob):
+        log.debug("Entering extract_hits()")
         try:
-            hits = blob['Hits']
-            self.geometry.apply(hits)
+            hits = self.geometry.apply(blob['Hits'])
         except KeyError:
             raise SystemExit("No suitable hits found in the file!")
 
         print("Number of hits: {0}".format(len(hits)))
         if self.min_tot:
-            hits = [hit for hit in hits if hit.tot > self.min_tot]
+            hits = hits[hits.tot > self.min_tot]
             print("Number of hits after ToT={0} cut: {1}"
                   .format(self.min_tot, len(hits)))
         if not self.min_tot and len(hits) > 500:
             print("Warning: consider applying a ToT filter to reduce the "
                   "amount of hits, according to your graphic cards "
                   "performance!")
-        hits.sort(key=lambda h: h.time)
-        return hits
+        return hits.sorted()
 
     def add_neutrino(self, blob):
         """Add the neutrino to the scene."""
@@ -407,18 +406,18 @@ class RainbowAlga(object):
 
     def add_mc_tracks(self, blob):
         """Find MC particles and add them to the objects to render."""
-        return
         try:
-            track_ins = blob['MCTracks']
+            track_ins = blob['McTracks']
         except KeyError:
+            print("No MCTracks found.")
             return
 
         try:
             highest_energetic_track = max(track_ins, key=lambda t: t.E)
-            highest_energy = highest_energetic_track.E
+            # highest_energy = highest_energetic_track.E
         except AttributeError:  # hdf5 mc tracks are not implemented yet
             highest_energetic_track = max(track_ins, key=lambda t: t.energy)
-            highest_energy = highest_energetic_track.energy
+            # highest_energy = highest_energetic_track.energy
 
         for track in track_ins:
             try:  # legacy format from EVT
@@ -429,19 +428,20 @@ class RainbowAlga(object):
                 particle_type = track.type
                 energy = track.energy
                 track_length = 1e6  # mmmmhhh
-            if particle_type in (0, 22): # skip unknowns, photons
+            print("Track length: {0}".format(track_length))
+            if particle_type in (0, 22):  # skip unknowns, photons
                 continue
             if angle_between(highest_energetic_track.dir, track.dir) > 0.035:
                 # TODO: make this realistic!
                 # skip if angle too large
                 continue
-            if particle_type not in (-11, 11, -13, 13, -15, 15):
-                # TODO: make this realistic!
-                track_length = 200 * energy / highest_energy
+#            if particle_type not in (-11, 11, -13, 13, -15, 15):
+#                # TODO: make this realistic!
+#                track_length = 200 * energy / highest_energy
             particle = Particle(track.pos[0], track.pos[1], track.pos[2],
                                 track.dir[0], track.dir[1], track.dir[2],
                                 track.time, constants.c, self.colourist,
-                                energy, track_length)
+                                energy, length=0)
             particle.hidden = not self.show_secondaries
             if track.id == highest_energetic_track.id:
                 particle.color = (0.0, 1.0, 0.2)
@@ -452,13 +452,14 @@ class RainbowAlga(object):
 
     def add_reco_tracks(self, blob):
         """Find reco particles and add them to the objects to render."""
-        try:
-            reco = blob['RecoTrack']
-        except (KeyError, TypeError):
-            return
-        particle = ParticleFit(track.pos.x, track.pos.y, track.pos.z,
-                               track.dir.x, track.dir.y, track.dir.z,
-                               constants.c, track.ts, track.te)
+        pass
+        # try:
+        #     reco = blob['RecoTrack']
+        # except (KeyError, TypeError):
+        #     return
+        # particle = ParticleFit(track.pos.x, track.pos.y, track.pos.z,
+        #                        track.dir.x, track.dir.y, track.dir.z,
+        #                        constants.c, track.ts, track.te)
 #       dir = Direction((-0.05529533412, -0.1863083737, -0.9809340528))
 #       pos = Position(( 128.9671546, 135.4618441, 397.8256624))
 #       self.camera.target = Position(( 128.9671546, 135.4618441, 397.8256624))
@@ -475,9 +476,9 @@ class RainbowAlga(object):
 #                              dir.x, dir.y, dir.z, t_0,
 #                              constants.c, self.colourist, 1e4)
 #       # particle.cherenkov_cone_enabled = True
-        particle.hidden = False
-        particle.line_width = 3
-        self.objects.setdefault("reco_tracks", []).append(particle)
+        # particle.hidden = False
+        # particle.line_width = 3
+        # self.objects.setdefault("reco_tracks", []).append(particle)
 
     def toggle_secondaries(self):
         self.show_secondaries = not self.show_secondaries
@@ -489,7 +490,6 @@ class RainbowAlga(object):
         highest_energetic = max(secondaries, key=lambda s: s.energy)
         if highest_energetic:
             highest_energetic.hidden = False
-
 
     def load_next_blob(self):
         try:
@@ -509,12 +509,14 @@ class RainbowAlga(object):
             self.clock.reset()
             self.event_index -= 1
 
-
     def init_opengl(self, width, height, x, y):
         glutInit()
         glutInitWindowPosition(x, y)
         glutInitWindowSize(width, height)
-        glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE)
+        glutInitDisplayMode(GLUT_DOUBLE |
+                            GLUT_RGB |
+                            GLUT_DEPTH |
+                            GLUT_MULTISAMPLE)
         glutCreateWindow("Rainbow Alga")
         glutDisplayFunc(self.render)
         glutIdleFunc(self.render)
@@ -531,7 +533,6 @@ class RainbowAlga(object):
         glLoadIdentity()
         glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 3000)
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
-
 
         # Lighting
         light_ambient = (0.0, 0.0, 0.0, 1.0)
@@ -560,9 +561,8 @@ class RainbowAlga(object):
         glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess)
 
         # Transparency
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
     def render(self):
         self.clock.record_frame_time()
@@ -572,7 +572,6 @@ class RainbowAlga(object):
             frame_name = "Frame_{0:05d}.jpg".format(self.frame_index)
             self.save_screenshot(frame_name)
             self.timer.snooze()
-
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
@@ -601,7 +600,6 @@ class RainbowAlga(object):
 
         glutSwapBuffers()
 
-
     def draw_detector(self):
         glUseProgram(self.shader)
         try:
@@ -617,12 +615,10 @@ class RainbowAlga(object):
         finally:
             glUseProgram(0)
 
-
     def draw_gui(self):
         logo = self.logo
         logo_bytes = self.logo_bytes
 
-        menubar_height = logo.size[1] + 4
         width = glutGet(GLUT_WINDOW_WIDTH)
         height = glutGet(GLUT_WINDOW_HEIGHT)
         glMatrixMode(GL_PROJECTION)
@@ -631,19 +627,9 @@ class RainbowAlga(object):
         glOrtho(0.0, width, height, 0.0, -1.0, 10.0)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        #glDisable(GL_CULL_FACE)
         glShadeModel(GL_SMOOTH)
 
         glClear(GL_DEPTH_BUFFER_BIT)
-
-        # Top bar
-        #glBegin(GL_QUADS)
-        #glColor3f(0.14, 0.49, 0.87)
-        #glVertex2f(0, 0)
-        #glVertex2f(width - logo.size[0] - 10, 0)
-        #glVertex2f(width - logo.size[0] - 10, menubar_height)
-        #glVertex2f(0, menubar_height)
-        #glEnd()
 
         try:
             self.draw_colour_legend()
@@ -653,7 +639,8 @@ class RainbowAlga(object):
         glPushMatrix()
         glLoadIdentity()
         glRasterPos(4, logo.size[1] + 4)
-        glDrawPixels(logo.size[0], logo.size[1], GL_RGB, GL_UNSIGNED_BYTE, logo_bytes)
+        glDrawPixels(logo.size[0], logo.size[1],
+                     GL_RGB, GL_UNSIGNED_BYTE, logo_bytes)
         glPopMatrix()
 
         glMatrixMode(GL_PROJECTION)
@@ -661,12 +648,6 @@ class RainbowAlga(object):
         glMatrixMode(GL_MODELVIEW)
 
         self.colourist.now_text()
-
-
-        #draw_text_2d("{0}ns".format(int(self.min_hit_time)), width - 80, 20)
-        #draw_text_2d("{0}ns".format(int(self.max_hit_time)), width - 80, height - menubar_height - 10)
-        #draw_text_2d("{0}ns".format(int((self.min_hit_time + self.max_hit_time) / 2)), width - 80, int(height/2))
-
 
         if self.show_help:
             self.display_help()
@@ -683,8 +664,10 @@ class RainbowAlga(object):
         right_x = width - 10
         min_y = menubar_height + 5
         max_y = height - 20
-        time_step_size = math.ceil(self.max_hit_time / 20 / 50) * 50
-        hit_times = list(range(int(self.min_hit_time), int(self.max_hit_time), int(time_step_size)))
+        time_step_size = math.ceil((self.max_hit_time - self.min_hit_time)/ 20 / 50) * 50
+        hit_times = list(range(int(self.min_hit_time),
+                               int(self.max_hit_time),
+                               int(time_step_size)))
         if len(hit_times) > 1:
             segment_height = int((max_y - min_y) / len(hit_times))
             glMatrixMode(GL_MODELVIEW)
@@ -705,7 +688,9 @@ class RainbowAlga(object):
             self.colourist.now_text()
             for hit_time in hit_times:
                 segment_nr = hit_times.index(hit_time)
-                draw_text_2d("{0:>5}ns".format(hit_time), width - 80, (height - max_y) + segment_height * segment_nr)
+                draw_text_2d("{0:>5}ns".format(hit_time),
+                             width - 80,
+                             (height - max_y) + segment_height * segment_nr)
 
     def resize(self, width, height):
         if width < 400:
@@ -721,10 +706,8 @@ class RainbowAlga(object):
         gluPerspective(45.0, float(width)/float(height), 0.1, 10000.0)
         glMatrixMode(GL_MODELVIEW)
 
-
     def mouse(self, button, state, x, y):
         width = glutGet(GLUT_WINDOW_WIDTH)
-        height = glutGet(GLUT_WINDOW_HEIGHT)
 
         if button == GLUT_LEFT_BUTTON:
             if state == GLUT_DOWN:
@@ -743,41 +726,42 @@ class RainbowAlga(object):
             self.camera.distance = self.camera.distance - 2
 
     def keyboard(self, key,  x,  y):
-        if(key == "r"):
+        log.debug("Key {} pressed".format(key))
+        if(key == b"r"):
             self.clock.reset()
-        if(key == "h"):
+        if(key == b"h"):
             self.show_help = not self.show_help
-        if(key == 'i'):
+        if(key == b'i'):
             self.show_info = not self.show_info
-        if(key == "+"):
+        if(key == b"+"):
             self.camera.distance = self.camera.distance - 50
-        if(key == "-"):
+        if(key == b"-"):
             self.camera.distance = self.camera.distance + 50
-        if(key == "."):
+        if(key == b"."):
             self.min_tot += 0.5
             self.reload_blob()
-        if(key == ","):
+        if(key == b","):
             self.min_tot -= 0.5
             self.reload_blob()
-        if(key == 'n'):
+        if(key == b'n'):
             self.load_next_blob()
-        if(key == 'p'):
+        if(key == b'p'):
             self.load_previous_blob()
-        if(key == 'u'):
+        if(key == b'u'):
             self.toggle_secondaries()
-        if(key == 't'):
+        if(key == b't'):
             self.toggle_spectrum()
-        if(key == 'x'):
+        if(key == b'x'):
             self.cmap = self.colourist.next_cmap
-        if(key == 'm'):
+        if(key == b'm'):
             self.colourist.print_mode = not self.colourist.print_mode
             self.load_logo()
-        if(key == 'a'):
+        if(key == b'a'):
             self.camera.is_rotating = not self.camera.is_rotating
-        if(key == 'c'):
+        if(key == b'c'):
             self.colourist.cherenkov_cone_enabled = \
                 not self.colourist.cherenkov_cone_enabled
-        if(key == "s"):
+        if(key == b"s"):
             event_number = self.blob['start_event'][0]
             try:
                 neutrino = self.blob['Neutrino']
@@ -794,15 +778,15 @@ class RainbowAlga(object):
                     )
 
             self.save_screenshot(screenshot_name)
-        if(key == 'v'):
+        if(key == b'v'):
             self.frame_index = 0
             self.is_recording = not self.is_recording
-        if(key == " "):
+        if(key == b" "):
             if self.clock.is_paused:
                 self.clock.resume()
             else:
                 self.clock.pause()
-        if(key in ('q', chr(27))):
+        if(key in (b'q', b'\x1b')):
             raise SystemExit
 
     def special_keyboard(self, key, x, z):
@@ -830,11 +814,12 @@ class RainbowAlga(object):
         height = glutGet(GLUT_WINDOW_HEIGHT)
         pixelset = (GLubyte * (3*width*height))(0)
         glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixelset)
-        image = Image.frombytes(mode="RGB", size=(width, height), data=pixelset)
+        image = Image.frombytes(mode="RGB",
+                                size=(width, height),
+                                data=pixelset)
         image = image.transpose(Image.FLIP_TOP_BOTTOM)
         image.save(name)
         print("Screenshot saved as '{0}'.".format(name))
-
 
     @property
     def help_string(self):
@@ -901,6 +886,7 @@ def main():
     arguments = docopt(__doc__, version=version)
     event_file = arguments['EVENT_FILE']
     detector_file = arguments['-d']
+
     try:
         min_tot = float(arguments['-t'])
     except TypeError:
@@ -909,7 +895,8 @@ def main():
         skip_to_blob = int(arguments['-s'])
     except TypeError:
         skip_to_blob = 0
-    app = RainbowAlga(detector_file, event_file, min_tot, skip_to_blob)
+
+    app = RainbowAlga(detector_file, event_file, min_tot, skip_to_blob)  # noqa
 
 
 if __name__ == "__main__":
