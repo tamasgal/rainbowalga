@@ -21,7 +21,6 @@ Options:
 """
 from __future__ import division, absolute_import, print_function
 
-import pdb
 import os
 import math
 import itertools
