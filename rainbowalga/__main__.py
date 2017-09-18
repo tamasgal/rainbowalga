@@ -203,6 +203,7 @@ class RainbowAlga(object):
 
         if style == 'default':
             hits = self.extract_hits(blob)
+            hits = self.correct_mc_times(hits, blob)
             hits = self.remove_hidden_hits(hits)
 
             hit_times = hits.time
@@ -324,7 +325,6 @@ class RainbowAlga(object):
         for om_comb in om_combs:
             du, floor = om_comb
             om_hit_map[om_comb] = hits[(hits.du == du) & (hits.floor == floor)]
-        print(om_hit_map)
         for hit in hits:
             x, y, z = hit.pos_x, hit.pos_y, hit.pos_z
             rb_hit = Hit(x, y, z, hit.time, hit.pmt_id, hit.id, hit.tot)
@@ -348,9 +348,20 @@ class RainbowAlga(object):
               .format(len(hits)))
         return hits
 
+    def correct_mc_times(self, hits, blob):
+        ei = blob["EventInfo"]
+
+        def converter(t):
+            ns = ei.utc_seconds[0]*1e9 + ei.utc_nanoseconds[0]
+            return t + ns - ei.mc_t[0]
+
+        uconverter = np.frompyfunc(converter, 1, 1)
+        
+        hits._arr["time"] = uconverter(hits.time)
+        return hits
+
     def first_om_hits(self, hits):
         log.debug("Entering first_om_hits()")
-        print(hits.time)
         om_hit_map = {}
         for hit in hits:
             if hit.time < 0:
