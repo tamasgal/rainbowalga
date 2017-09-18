@@ -10,12 +10,13 @@ Usage:
     rainbowalga --version
 
 Options:
-    EVENT_FILE         Event file (currently only EVT).
-    -h --help          Show this screen.
-    -v --version       Show version.
-    -d DETECTOR        Detector file (DETX) or detector ID (eg. D_ARCA003).
-    -t MIN_TOT         ToT threshold in ns [default=30].
-    -s INDEX           Skip to event at index [default=0].
+    EVENT_FILE             Event file (currently only EVT).
+    -m                     Convert JTE times back to MC times.
+    -h --help              Show this screen.
+    -v --version           Show version.
+    -d DETECTOR            Detector file (DETX) or detector ID (eg. D_ARCA003).
+    -t MIN_TOT             ToT threshold in ns [default=30].
+    -s INDEX               Skip to event at index [default=0].
 
 """
 from __future__ import division, absolute_import, print_function
@@ -82,10 +83,11 @@ log = logging.getLogger('rainbowalga')  # pylint: disable=C0103
 
 class RainbowAlga(object):
     def __init__(self, detector_file=None, event_file=None, min_tot=None,
-                 skip_to_blob=0,
+                 skip_to_blob=0, should_correct_mc_times=False,
                  width=1000, height=700, x=50, y=50):
         self.camera = Camera()
         self.camera.is_rotating = True
+        self.should_correct_mc_times = should_correct_mc_times
 
         self.colourist = Colourist()
 
@@ -204,7 +206,8 @@ class RainbowAlga(object):
 
         if style == 'default':
             hits = self.extract_hits(blob)
-            hits = self.correct_mc_times(hits, blob)
+            if self.should_correct_mc_times:
+                hits = self.correct_mc_times(hits, blob)
             hits = self.remove_hidden_hits(hits)
 
             hit_times = hits.time
@@ -908,7 +911,11 @@ def main():
     except TypeError:
         skip_to_blob = 0
 
-    app = RainbowAlga(detector_file, event_file, min_tot, skip_to_blob)  # noqa
+    app = RainbowAlga(detector_file,
+                      event_file,
+                      min_tot,
+                      skip_to_blob,
+                      arguments['-m'])
 
 
 if __name__ == "__main__":
