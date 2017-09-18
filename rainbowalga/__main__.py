@@ -20,6 +20,7 @@ Options:
 """
 from __future__ import division, absolute_import, print_function
 
+import pdb
 import os
 import math
 import itertools
@@ -675,10 +676,11 @@ class RainbowAlga(object):
         right_x = width - 10
         min_y = menubar_height + 5
         max_y = height - 20
-        time_step_size = math.ceil(self.max_hit_time / 20 / 50) * 50
+        time_step_size = math.ceil((self.max_hit_time - self.min_hit_time)/ 20 / 50) * 50
         hit_times = list(range(int(self.min_hit_time),
                                int(self.max_hit_time),
                                int(time_step_size)))
+        pdb.set_trace()
         if len(hit_times) > 1:
             segment_height = int((max_y - min_y) / len(hit_times))
             glMatrixMode(GL_MODELVIEW)
