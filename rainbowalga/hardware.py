@@ -53,7 +53,7 @@ class DetectorLine(object):
         self.z = z 
         self.length = length
         
-    def draw(self, line_width=2):
+    def draw(self, line_width=2, quality=1.0):
         glEnable(GL_DEPTH_TEST)
         glShadeModel(GL_FLAT)
         glPushMatrix()
@@ -72,7 +72,7 @@ class DOM(object):
         self.pos = pos
         self.radius = radius
 
-    def draw(self):
+    def draw(self, quality=1.0):
         glPushMatrix()
         glTranslated(self.pos.x, self.pos.y, self.pos.z)
 
@@ -84,7 +84,7 @@ class DOM(object):
         glEnable(GL_COLOR_MATERIAL)
         glColorMaterial(GL_FRONT, GL_DIFFUSE)
         #glDisable(GL_TEXTURE_2D)
-        glutSolidSphere(self.radius, 64, 64)
+        glutSolidSphere(self.radius, int(64*quality), int(64*quality))
         glDisable(GL_COLOR_MATERIAL)
 
         glDisable(GL_LIGHTING)

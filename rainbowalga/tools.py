@@ -138,7 +138,7 @@ class Camera(object):
 
 
 class CoordinateSystem(object):
-    def draw(self, line_width=1, color=(1.0, 0.0, 0.0)):
+    def draw(self, line_width=1, color=(1.0, 0.0, 0.0), quality=1.0):
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_LINE_SMOOTH)
         glShadeModel(GL_FLAT)

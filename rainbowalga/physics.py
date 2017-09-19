@@ -5,14 +5,13 @@ import numpy as np
 from km3pipe import constants
 from km3pipe.dataclasses import Position, Direction
 
-from OpenGL.GL import (glPushMatrix,glLineWidth, glColor3f, glBegin, GL_LINES,
-                       glEnd, glVertex3f, glPushMatrix, glPopMatrix, glEnable,
-                       glTranslated, glRotated, GL_FLAT, GL_DEPTH_TEST,
+from OpenGL.GL import (glPushMatrix, glLineWidth, glColor3f, glBegin, GL_LINES,
+                       glEnd, glVertex3f, glPopMatrix, glEnable,
+                       glTranslated, GL_FLAT, GL_DEPTH_TEST,
                        glShadeModel, glDisable, GL_LIGHTING, glMultMatrixf,
                        glColor4f)
 from OpenGL.GLUT import glutSolidSphere, glutSolidCone
 
-from rainbowalga.gui import Colourist
 
 class Neutrino(object):
     def __init__(self, x, y, z, dx, dy, dz, time,
@@ -31,11 +30,10 @@ class Neutrino(object):
         self.line_width = line_width
         self.hidden = False
 
-    def draw(self, time, line_width=None):
+    def draw(self, time, line_width=None, quality=1.0):
         if self.hidden:
             return
         time = time * 1e-9
-
 
         pos_start = self.start_pos + (constants.c * (-self.time) * self.dir)
         if time >= self.time:
@@ -52,6 +50,7 @@ class Neutrino(object):
         glVertex3f(*pos_end)
         glEnd()
         glPopMatrix()
+
 
 class Particle(object):
     def __init__(self, x, y, z, dx, dy, dz, time, speed, colourist,
@@ -75,7 +74,7 @@ class Particle(object):
         self.colourist = colourist
         self.hidden = False
 
-    def draw(self, time, line_width=None):
+    def draw(self, time, line_width=None, quality=1.0):
         if self.hidden:
             return
         time = time * 1e-9
@@ -89,8 +88,6 @@ class Particle(object):
             if np.linalg.norm(max_path) <= np.linalg.norm(path):
                 path = max_path
         pos_end = self.pos + path
-
-
 
         glPushMatrix()
         if line_width:
@@ -125,7 +122,7 @@ class Particle(object):
             glutSolidCone(0.6691*height, height, 128, 64)
             glPopMatrix()
             glPopMatrix()
-            
+
             glDisable(GL_LIGHTING)
 
 
@@ -147,7 +144,7 @@ class ParticleFit(object):
         self.line_width = line_width
         self.hidden = False
 
-    def draw(self, time, line_width=None):
+    def draw(self, time, line_width=None, quality=1.0):
         if self.hidden:
             return
         if time <= self.ts:
@@ -156,11 +153,6 @@ class ParticleFit(object):
 
         pos_start = self.pos
         path = (self.speed * (time - self.ts * 1e-9) * self.dir)
-        #max_end = self.pos + (self.speed * self.te * self.dir)
-        #if not int(self.te) == 0 and time > self.te:
-        #    pos_end = max_end
-        #else:
-        #    pos_end = self.pos + path
         pos_end = self.pos + path
 
         glPushMatrix()
@@ -177,7 +169,8 @@ class ParticleFit(object):
 
 
 class Hit(object):
-    def __init__(self, x, y, z, time, pmt_id, hit_id, tot=10, replaces_hits=None):
+    def __init__(self, x, y, z, time, pmt_id, hit_id,
+                 tot=10, replaces_hits=None):
         self.x = x
         self.y = y
         self.z = z
@@ -198,7 +191,7 @@ class Hit(object):
             for hit in self.replaces_hits:
                 hit.hidden = False
 
-    def draw(self, time, spectrum):
+    def draw(self, time, spectrum, quality=1.0):
         if self.hidden:
             return
         if time < self.time:
@@ -207,17 +200,14 @@ class Hit(object):
 
         self._hide_replaced_hits()
 
-        #color = (1.0, 1.0-self.time/2000.0, self.time/2000.0)
         color = spectrum(self.time, self)
         glPushMatrix()
         glTranslated(self.x, self.y, self.z)
 
         glColor3f(*color)
-        #glEnable(GL_COLOR_MATERIAL)
-        #glColorMaterial(GL_FRONT, GL_DIFFUSE)
-        glutSolidSphere(int(1+np.sqrt(self.tot)*1.5), 16, 16)
-        #glDisable(GL_COLOR_MATERIAL)
-
+        segments = int(16*quality)
+        glutSolidSphere(int(1+np.sqrt(self.tot)*1.5),
+                        segments, segments)
 
         glPopMatrix()
 
@@ -229,18 +219,18 @@ def normalize(v):
     else:
         return v
 
+
 def transform(v):
     bz = normalize(v)
     if (abs(v[2]) < abs(v[0])) and (abs(v[2]) < abs(v[1])):
         by = normalize(np.array([v[1], -v[0], 0]))
     else:
         by = normalize(np.array([v[2], 0, -v[0]]))
-        #~ by = normalize(np.array([0, v[2], -v[1]]))
 
     bx = np.cross(by, bz)
-    R =  np.array([[bx[0], by[0], bz[0], 0],
-                   [bx[1], by[1], bz[1], 0],
-                   [bx[2], by[2], bz[2], 0],
-                   [0,     0,     0,     1]], dtype=np.float32)
+    R = np.array([[bx[0], by[0], bz[0], 0],
+                  [bx[1], by[1], bz[1], 0],
+                  [bx[2], by[2], bz[2], 0],
+                  [0,     0,     0,     1]], dtype=np.float32)
 
     return R.T

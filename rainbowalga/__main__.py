@@ -87,6 +87,7 @@ class RainbowAlga(object):
         self.camera = Camera()
         self.camera.is_rotating = True
         self.should_correct_mc_times = should_correct_mc_times
+        self.quality = 1
 
         self.colourist = Colourist()
 
@@ -603,12 +604,12 @@ class RainbowAlga(object):
         glEnable(GL_LIGHTING)
 
         for obj in self.shaded_objects:
-            obj.draw(self.clock.time, self.spectrum)
+            obj.draw(self.clock.time, self.spectrum, quality=self.quality)
 
         glDisable(GL_LIGHTING)
 
         for obj in itertools.chain.from_iterable(self.objects.values()):
-            obj.draw(self.clock.time)
+            obj.draw(self.clock.time, quality=self.quality)
 
         self.draw_gui()
 
@@ -757,6 +758,17 @@ class RainbowAlga(object):
         if(key == b","):
             self.min_tot -= 0.5
             self.reload_blob()
+        if(key == b">"):
+            self.quality += 0.1
+            print("Increasing the number of polygons. (Factor {0:.1f})"
+                  .format(self.quality))
+        if(key == b"<"):
+            if self.quality > 0.25:
+                self.quality -= 0.1
+                print("Decreasing the number of polygons. (Factor {0:.1f})"
+                      .format(self.quality))
+            else:
+                print("Can't go lower with graphics. Buy a new computer.")
         if(key == b'n'):
             self.load_next_blob()
         if(key == b'p'):
@@ -857,6 +869,7 @@ class RainbowAlga(object):
                 '<space>': 'pause time',
                 '+ or -': 'zoom in/out',
                 ', or .': 'decrease/increase min_tot by 0.5ns',
+                '< or >': 'decrease/increase number of polygons',
                 '<esc> or q': 'quit',
                 }
             help_string = "Keyboard commands:\n-------------------\n"
