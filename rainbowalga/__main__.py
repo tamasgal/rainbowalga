@@ -70,9 +70,9 @@ from rainbowalga import version
 from km3pipe.dataclasses import Position
 from km3pipe.hardware import Detector
 from km3pipe.mc import pdg2name
-from km3pipe.dev import iteritems
+from km3pipe.tools import iteritems
 from km3pipe.math import angle_between
-from km3pipe import Geometry
+from km3pipe.calib import Calibration
 from km3pipe.io import GenericPump
 
 from km3pipe.logger import logging
@@ -140,10 +140,10 @@ class RainbowAlga(object):
 
         if detector_file.endswith('.detx'):
             self.detector = Detector(filename=detector_file)
-            self.geometry = Geometry(filename=detector_file)
+            self.geometry = Calibration(filename=detector_file)
         else:
             self.detector = Detector(det_id=detector_file)
-            self.geometry = Geometry(det_id=detector_file)
+            self.geometry = Calibration(det_id=detector_file)
 
         dom_pos = self.detector.dom_positions.values()
         min_z = min([z for x, y, z in dom_pos])
