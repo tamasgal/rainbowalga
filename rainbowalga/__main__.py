@@ -799,7 +799,7 @@ class RainbowAlga(object):
             self.colourist.cherenkov_cone_enabled = \
                 not self.colourist.cherenkov_cone_enabled
         if(key == b"s"):
-            event_number = self.blob['start_event'][0]
+            event_number = self.event_index
             try:
                 neutrino = self.blob['Neutrino']
             except KeyError:
