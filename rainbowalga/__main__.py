@@ -60,6 +60,7 @@ from OpenGL.GL.shaders import compileShader, compileProgram
 import numpy as np
 
 from PIL import Image
+import tables as tb
 
 from rainbowalga.tools import Clock, Camera, draw_text_2d, base_round
 from rainbowalga.physics import Particle, Neutrino, Hit
@@ -137,6 +138,7 @@ class RainbowAlga(object):
         self.cmap = self.colourist.default_cmap
         self.min_hit_time = None
         self.max_hit_time = None
+        self.origin = Position((0, 0, 0))
 
         if detector_file.endswith('.detx'):
             self.detector = Detector(filename=detector_file)
@@ -154,6 +156,13 @@ class RainbowAlga(object):
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
         if event_file:
+            if event_file.endswith(".h5"):
+                with tb.File("km3_v4_numuCC_42.JTE_r2356.root.h5") as f:
+                    header = f.get_node("/header")._v_attrs
+                    self.origin = Position((header['coord_origin_x'],
+                                            header['coord_origin_y'],
+                                            header['coord_origin_z']))
+
             self.pump = GenericPump(event_file)
 
             try:
@@ -453,7 +462,9 @@ class RainbowAlga(object):
 #            if particle_type not in (-11, 11, -13, 13, -15, 15):
 #                # TODO: make this realistic!
 #                track_length = 200 * energy / highest_energy
-            particle = Particle(track.pos[0], track.pos[1], track.pos[2],
+            particle = Particle(track.pos[0]+self.origin[0],
+                                track.pos[1]+self.origin[1],
+                                track.pos[2]+self.origin[2],
                                 track.dir[0], track.dir[1], track.dir[2],
                                 track.time, constants.c, self.colourist,
                                 energy, length=0)
