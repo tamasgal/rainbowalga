@@ -3,7 +3,6 @@ from __future__ import division, absolute_import, print_function
 import numpy as np
 
 from km3pipe import constants
-from km3pipe.dataclasses import Position, Direction
 
 from OpenGL.GL import (glPushMatrix,glLineWidth, glColor3f, glBegin, GL_LINES,
                        glEnd, glVertex3f, glPushMatrix, glPopMatrix, glEnable,
@@ -23,9 +22,9 @@ class Neutrino(object):
         self.dx = dx
         self.dy = dy
         self.dz = dz
-        self.pos = Position((x, y, z))
-        self.dir = Direction((dx, dy, dz))
-        self.start_pos = Position((x, y, z)) - self.dir*1000
+        self.pos = np.array((x, y, z))
+        self.dir = np.array((dx, dy, dz))
+        self.start_pos = np.array((x, y, z)) - self.dir*1000
         self.time = time * 1e-9
         self.color = color
         self.line_width = line_width
@@ -63,8 +62,8 @@ class Particle(object):
         self.dx = dx
         self.dy = dy
         self.dz = dz
-        self.pos = Position((x, y, z))
-        self.dir = Direction((dx, dy, dz))
+        self.pos = np.array((x, y, z))
+        self.dir = np.array((dx, dy, dz))
         self.time = time * 1e-9
         self.speed = speed
         self.energy = energy
@@ -138,8 +137,8 @@ class ParticleFit(object):
         self.dx = dx
         self.dy = dy
         self.dz = dz
-        self.pos = Position((x, y, z))
-        self.dir = Direction((dx, dy, dz))
+        self.pos = np.array((x, y, z))
+        self.dir = np.array((dx, dy, dz))
         self.speed = speed
         self.ts = ts
         self.te = te
