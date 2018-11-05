@@ -15,7 +15,7 @@ from OpenGL.GL import (glMatrixMode, GL_MODELVIEW, glBegin, glEnd, glEnable,
                        glColor3f, glRasterPos, glRasterPos2i, GL_LINE_SMOOTH,
                        GL_FLAT, GL_LINES, glTranslated, glRotated)
 
-from .core import Position
+from km3pipe.dataclasses import Vec3
 
 
 class Clock(object):
@@ -25,6 +25,7 @@ class Clock(object):
     :param float snooze_interval: Seconds to be snoozed
 
     """
+
     def __init__(self, speed=1, snooze_interval=1):
         self.speed = speed
         self.snooze_interval = snooze_interval
@@ -45,7 +46,6 @@ class Clock(object):
 
     def fast_forward(self, time):
         self.offset -= time / self.speed
-
 
     def reset(self):
         """Set the offset to now."""
@@ -72,7 +72,7 @@ class Clock(object):
     def record_frame_time(self):
         """Save the frame time for FPS calculations (keep only the last 10)."""
         if len(self.frame_times) > 10:
-            del(self.frame_times[0])
+            del (self.frame_times[0])
         self.frame_times.append(self.unix_time())
 
     def snooze(self):
@@ -96,10 +96,11 @@ class Clock(object):
 
 class Camera(object):
     """The camera. Desperately needs refactoring."""
-    def __init__(self, distance=1500, up=Position(0, 0, 1)):
-        self.target = Position(0, 0, 0)
+
+    def __init__(self, distance=1500, up=Vec3(0, 0, 1)):
+        self.target = Vec3(0, 0, 0)
         self.up = up
-        self._pos = np.array((1, 1, 1))
+        self._pos = Vec3(1, 1, 1)
         self.distance = distance
         self.is_rotating = False
 
@@ -107,34 +108,38 @@ class Camera(object):
     def pos(self):
         self._pos = self._pos / np.linalg.norm(self._pos)
         current_position = self._pos * self.distance
-        return Position(current_position[0], current_position[1], current_position[2])
+        return Vec3(current_position[0], current_position[1],
+                    current_position[2])
 
     def rotate_y(self, angle):
         theta = angle * np.pi / 180
-        rotation_matrix = np.matrix([[np.cos(theta), 0, np.sin(theta)],
-                                     [0, 1, 0],
-                                     [-np.sin(theta),  -0, np.cos(theta)]])
+        rotation_matrix = np.matrix([[np.cos(theta), 0,
+                                      np.sin(theta)], [0, 1, 0],
+                                     [-np.sin(theta), -0,
+                                      np.cos(theta)]])
         new_position = rotation_matrix.dot(self._pos)
-        self._pos = np.array((new_position[0, 0], new_position[0, 1], new_position[0, 2]))
+        self._pos = Vec3(new_position[0, 0], new_position[0, 1],
+                         new_position[0, 2])
 
     def rotate_z(self, angle):
         theta = angle * np.pi / 180
         rotation_matrix = np.matrix([[np.cos(theta), -np.sin(theta), 0],
-                                     [np.sin(theta),  np.cos(theta), 0],
-                                     [0, 0, 1]])
+                                     [np.sin(theta),
+                                      np.cos(theta), 0], [0, 0, 1]])
         new_position = rotation_matrix.dot(self._pos)
-        self._pos = np.array((new_position[0, 0], new_position[0, 1], new_position[0, 2]))
+        self._pos = Vec3(new_position[0, 0], new_position[0, 1],
+                         new_position[0, 2])
 
     def move_z(self, distance):
         position = self.pos
-        self._pos = np.array((position.x, position.y, position.z + distance))
+        self._pos = Vec3(position[0], position[1], position[2] + distance)
 
     def look(self):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        gluLookAt(self.pos.x, self.pos.y, self.pos.z,
-                  self.target.x, self.target.y, self.target.z,
-                  self.up.x, self.up.y, self.up.z)
+        gluLookAt(self.pos[0], self.pos[1], self.pos[2], self.target[0],
+                  self.target[1], self.target[2], self.up[0], self.up[1],
+                  self.up[2])
 
 
 class CoordinateSystem(object):
@@ -173,6 +178,7 @@ class CoordinateSystem(object):
         glPopMatrix()
         glPopMatrix()
 
+
 def draw_text_2d(text, x, y, line_height=17, color=None):
     """Draw a text at a given 2D position.
 
@@ -182,7 +188,7 @@ def draw_text_2d(text, x, y, line_height=17, color=None):
     height = glutGet(GLUT_WINDOW_HEIGHT)
 
     glMatrixMode(GL_PROJECTION)
-    glPushMatrix() #matrix = glGetDouble( GL_PROJECTION_MATRIX )
+    glPushMatrix()  #matrix = glGetDouble( GL_PROJECTION_MATRIX )
     glLoadIdentity()
     glOrtho(0.0, width, 0.0, height, -1.0, 1.0)
     glMatrixMode(GL_MODELVIEW)
@@ -200,8 +206,9 @@ def draw_text_2d(text, x, y, line_height=17, color=None):
             glutBitmapCharacter(GLUT_BITMAP_8_BY_13, ord(character))
     glPopMatrix()
     glMatrixMode(GL_PROJECTION)
-    glPopMatrix() #glLoadMatrixd(matrix)
+    glPopMatrix()  #glLoadMatrixd(matrix)
     glMatrixMode(GL_MODELVIEW)
+
 
 def draw_text_3d(text, x, y, z, color=None):
     """Draw a text at a given 3D position.
@@ -214,10 +221,10 @@ def draw_text_3d(text, x, y, z, color=None):
     glRasterPos(x, y, z)
     for character in text:
         if character == '\n':
-            glRasterPos(x, y, z-15)
+            glRasterPos(x, y, z - 15)
         else:
             glutBitmapCharacter(GLUT_BITMAP_8_BY_13, ord(character))
 
 
 def base_round(x, base=10):
-    return int(base * round(float(x)/base))
+    return int(base * round(float(x) / base))
