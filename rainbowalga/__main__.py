@@ -60,6 +60,7 @@ from rainbowalga.gui import Colourist
 from rainbowalga import constants
 from rainbowalga import version
 
+from km3pipe.dataclasses import Vec3
 from km3pipe.hardware import Detector
 from km3pipe.mc import pdg2name
 from km3pipe.math import angle_between
@@ -148,7 +149,7 @@ class RainbowAlga(object):
         max_z = max([z for x, y, z in dom_pos])
         z_shift = (max_z - min_z) / 2
         self.dom_positions = np.array([tuple(pos) for pos in dom_pos], 'f')
-        self.camera.target = np.array((0, 0, z_shift))
+        self.camera.target = Vec3(0, 0, z_shift)
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
         if event_file:
@@ -401,8 +402,8 @@ class RainbowAlga(object):
         except KeyError:
             return
         print(neutrino)
-        pos = np.array((neutrino.pos.x, neutrino.pos.y, neutrino.pos.z))
-        particle = Neutrino(pos.x, pos.y, pos.z, neutrino.dir.x,
+        pos = neutrino.pos
+        particle = Neutrino(pos[0], pos[1], pos[2], neutrino.dir.x,
                             neutrino.dir.y, neutrino.dir.z, 0)
         particle.color = (1.0, 0.0, 0.0)
         particle.line_width = 3
