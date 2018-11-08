@@ -3,34 +3,46 @@ from __future__ import division, absolute_import, print_function
 import numpy as np
 
 from km3pipe import constants
-from km3pipe.dataclasses import Position, Direction
+from km3pipe.dataclasses import Vec3
 
 from OpenGL.GL import (glPushMatrix, glLineWidth, glColor3f, glBegin, GL_LINES,
-                       glEnd, glVertex3f, glPopMatrix, glEnable,
-                       glTranslated, GL_FLAT, GL_DEPTH_TEST,
+                       glEnd, glVertex3f, glPushMatrix, glPopMatrix, glEnable,
+                       glTranslated, glRotated, GL_FLAT, GL_DEPTH_TEST,
                        glShadeModel, glDisable, GL_LIGHTING, glMultMatrixf,
                        glColor4f)
 from OpenGL.GLUT import glutSolidSphere, glutSolidCone
 
+from .gui import Colourist
+
+VEC_DT = [('x', float), ('y', float), ('z', float)]
+
 
 class Neutrino(object):
-    def __init__(self, x, y, z, dx, dy, dz, time,
-                 color=(1.0, 0.0, 0.0), line_width=3):
+    def __init__(self,
+                 x,
+                 y,
+                 z,
+                 dx,
+                 dy,
+                 dz,
+                 time,
+                 color=(1.0, 0.0, 0.0),
+                 line_width=3):
         self.x = x
         self.y = y
         self.z = z
         self.dx = dx
         self.dy = dy
         self.dz = dz
-        self.pos = Position((x, y, z))
-        self.dir = Direction((dx, dy, dz))
-        self.start_pos = Position((x, y, z)) - self.dir*1000
+        self.pos = Vec3(x, y, z)
+        self.dir = Vec3(dx, dy, dz)
+        self.start_pos = Vec3(x, y, z) - self.dir * 1000
         self.time = time * 1e-9
         self.color = color
         self.line_width = line_width
         self.hidden = False
 
-    def draw(self, time, line_width=None, quality=1.0):
+    def draw(self, time, line_width=None):
         if self.hidden:
             return
         time = time * 1e-9
@@ -53,8 +65,20 @@ class Neutrino(object):
 
 
 class Particle(object):
-    def __init__(self, x, y, z, dx, dy, dz, time, speed, colourist,
-                 energy, length=0, color=(0.0, 0.5, 0.7), line_width=1,
+    def __init__(self,
+                 x,
+                 y,
+                 z,
+                 dx,
+                 dy,
+                 dz,
+                 time,
+                 speed,
+                 colourist,
+                 energy,
+                 length=0,
+                 color=(0.0, 0.5, 0.7),
+                 line_width=1,
                  cherenkov_cone_enabled=False):
         self.x = x
         self.y = y
@@ -62,8 +86,8 @@ class Particle(object):
         self.dx = dx
         self.dy = dy
         self.dz = dz
-        self.pos = Position((x, y, z))
-        self.dir = Direction((dx, dy, dz))
+        self.pos = Vec3(x, y, z)
+        self.dir = Vec3(dx, dy, dz)
         self.time = time * 1e-9
         self.speed = speed
         self.energy = energy
@@ -74,7 +98,7 @@ class Particle(object):
         self.colourist = colourist
         self.hidden = False
 
-    def draw(self, time, line_width=None, quality=1.0):
+    def draw(self, time, line_width=None):
         if self.hidden:
             return
         time = time * 1e-9
@@ -116,10 +140,9 @@ class Particle(object):
             glTranslated(*position)
             glPushMatrix()
 
-            v = np.array(self.dir)
-            glMultMatrixf(transform(v))
+            glMultMatrixf(transform(self.dir))
 
-            glutSolidCone(0.6691*height, height, 128, 64)
+            glutSolidCone(0.6691 * height, height, 128, 64)
             glPopMatrix()
             glPopMatrix()
 
@@ -127,16 +150,26 @@ class Particle(object):
 
 
 class ParticleFit(object):
-    def __init__(self, x, y, z, dx, dy, dz, speed, ts, te,
-                 color=(1.0, 1.0, 0.6), line_width=2):
+    def __init__(self,
+                 x,
+                 y,
+                 z,
+                 dx,
+                 dy,
+                 dz,
+                 speed,
+                 ts,
+                 te,
+                 color=(1.0, 1.0, 0.6),
+                 line_width=2):
         self.x = x
         self.y = y
         self.z = z
         self.dx = dx
         self.dy = dy
         self.dz = dz
-        self.pos = Position((x, y, z))
-        self.dir = Direction((dx, dy, dz))
+        self.pos = Vec3(x, y, z)
+        self.dir = Vec3(dx, dy, dz)
         self.speed = speed
         self.ts = ts
         self.te = te
@@ -144,7 +177,7 @@ class ParticleFit(object):
         self.line_width = line_width
         self.hidden = False
 
-    def draw(self, time, line_width=None, quality=1.0):
+    def draw(self, time, line_width=None):
         if self.hidden:
             return
         if time <= self.ts:
@@ -153,6 +186,11 @@ class ParticleFit(object):
 
         pos_start = self.pos
         path = (self.speed * (time - self.ts * 1e-9) * self.dir)
+        #max_end = self.pos + (self.speed * self.te * self.dir)
+        #if not int(self.te) == 0 and time > self.te:
+        #    pos_end = max_end
+        #else:
+        #    pos_end = self.pos + path
         pos_end = self.pos + path
 
         glPushMatrix()
@@ -169,8 +207,15 @@ class ParticleFit(object):
 
 
 class Hit(object):
-    def __init__(self, x, y, z, time, pmt_id, hit_id,
-                 tot=10, replaces_hits=None):
+    def __init__(self,
+                 x,
+                 y,
+                 z,
+                 time,
+                 pmt_id,
+                 hit_id,
+                 tot=10,
+                 replaces_hits=None):
         self.x = x
         self.y = y
         self.z = z
@@ -191,7 +236,7 @@ class Hit(object):
             for hit in self.replaces_hits:
                 hit.hidden = False
 
-    def draw(self, time, spectrum, quality=1.0):
+    def draw(self, time, spectrum):
         if self.hidden:
             return
         if time < self.time:
@@ -200,14 +245,16 @@ class Hit(object):
 
         self._hide_replaced_hits()
 
+        #color = (1.0, 1.0-self.time/2000.0, self.time/2000.0)
         color = spectrum(self.time, self)
         glPushMatrix()
         glTranslated(self.x, self.y, self.z)
 
         glColor3f(*color)
-        segments = int(16*quality)
-        glutSolidSphere(int(1+np.sqrt(self.tot)*1.5),
-                        segments, segments)
+        #glEnable(GL_COLOR_MATERIAL)
+        #glColorMaterial(GL_FRONT, GL_DIFFUSE)
+        glutSolidSphere(int(1 + np.sqrt(self.tot) * 1.5), 16, 16)
+        #glDisable(GL_COLOR_MATERIAL)
 
         glPopMatrix()
 
@@ -215,7 +262,7 @@ class Hit(object):
 def normalize(v):
     norm = np.linalg.norm(v)
     if norm > 1.0e-8:  # arbitrarily small
-        return v/norm
+        return v / norm
     else:
         return v
 
@@ -226,11 +273,12 @@ def transform(v):
         by = normalize(np.array([v[1], -v[0], 0]))
     else:
         by = normalize(np.array([v[2], 0, -v[0]]))
+        #~ by = normalize(np.array([0, v[2], -v[1]]))
 
     bx = np.cross(by, bz)
-    R = np.array([[bx[0], by[0], bz[0], 0],
-                  [bx[1], by[1], bz[1], 0],
-                  [bx[2], by[2], bz[2], 0],
-                  [0,     0,     0,     1]], dtype=np.float32)
+    R = np.array(
+        [[bx[0], by[0], bz[0], 0], [bx[1], by[1], bz[1], 0],
+         [bx[2], by[2], bz[2], 0], [0, 0, 0, 1]],
+        dtype=np.float32)
 
     return R.T
