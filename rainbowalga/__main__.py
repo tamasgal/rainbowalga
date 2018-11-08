@@ -393,7 +393,7 @@ class RainbowAlga(object):
             print("Warning: consider applying a ToT filter to reduce the "
                   "amount of hits, according to your graphic cards "
                   "performance!")
-        return hits.sorted()
+        return hits.sorted(by='time')
 
     def add_neutrino(self, blob):
         """Add the neutrino to the scene."""
@@ -436,7 +436,10 @@ class RainbowAlga(object):
             print("Track length: {0}".format(track_length))
             if particle_type in (0, 22):  # skip unknowns, photons
                 continue
-            if angle_between(highest_energetic_track.dir, track.dir) > 0.035:
+            if angle_between(
+                (highest_energetic_track.dir_x, highest_energetic_track.dir_y,
+                 highest_energetic_track.dir_z),
+                (track.dir_x, track.dir_y, track.dir_z)) > 0.035:
                 # TODO: make this realistic!
                 # skip if angle too large
                 continue
@@ -444,12 +447,12 @@ class RainbowAlga(object):
 #                # TODO: make this realistic!
 #                track_length = 200 * energy / highest_energy
             particle = Particle(
-                track.pos[0],
-                track.pos[1],
-                track.pos[2],
-                track.dir[0],
-                track.dir[1],
-                track.dir[2],
+                track.pos_x,
+                track.pos_y,
+                track.pos_z,
+                track.dir_x,
+                track.dir_y,
+                track.dir_z,
                 track.time,
                 constants.c,
                 self.colourist,
