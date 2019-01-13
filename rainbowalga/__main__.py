@@ -380,6 +380,7 @@ class RainbowAlga(object):
     def extract_hits(self, blob):
         log.debug("Entering extract_hits()")
         try:
+            print(blob['Hits'])
             hits = self.geometry.apply(blob['Hits'])
         except KeyError:
             raise SystemExit("No suitable hits found in the file!")
@@ -393,13 +394,11 @@ class RainbowAlga(object):
             print("Warning: consider applying a ToT filter to reduce the "
                   "amount of hits, according to your graphic cards "
                   "performance!")
-        return hits.sorted()
+        return hits.sorted(by='time')
 
     def add_neutrino(self, blob):
         """Add the neutrino to the scene."""
-        try:
-            neutrino = blob['Neutrino']
-        except KeyError:
+        if 'Neutrino' not in blob:
             return
         print(neutrino)
         pos = neutrino.pos
@@ -417,12 +416,14 @@ class RainbowAlga(object):
             print("No MCTracks found.")
             return
 
-        try:
-            highest_energetic_track = max(track_ins, key=lambda t: t.E)
-            # highest_energy = highest_energetic_track.E
-        except AttributeError:  # hdf5 mc tracks are not implemented yet
-            highest_energetic_track = max(track_ins, key=lambda t: t.energy)
-            # highest_energy = highest_energetic_track.energy
+        print(track_ins)
+
+        # try:
+        #     highest_energetic_track = max(track_ins, key=lambda t: t.E)
+        #     # highest_energy = highest_energetic_track.E
+        # except AttributeError:  # hdf5 mc tracks are not implemented yet
+        #     highest_energetic_track = max(track_ins, key=lambda t: t.energy)
+        #     # highest_energy = highest_energetic_track.energy
 
         for track in track_ins:
             try:  # legacy format from EVT
@@ -436,31 +437,31 @@ class RainbowAlga(object):
             print("Track length: {0}".format(track_length))
             if particle_type in (0, 22):  # skip unknowns, photons
                 continue
-            if angle_between(highest_energetic_track.dir, track.dir) > 0.035:
-                # TODO: make this realistic!
-                # skip if angle too large
-                continue
-#            if particle_type not in (-11, 11, -13, 13, -15, 15):
-#                # TODO: make this realistic!
-#                track_length = 200 * energy / highest_energy
+#             if angle_between(highest_energetic_track.dir, track.dir) > 0.035:
+#                 # TODO: make this realistic!
+#                 # skip if angle too large
+#                 continue
+# #            if particle_type not in (-11, 11, -13, 13, -15, 15):
+# #                # TODO: make this realistic!
+# #                track_length = 200 * energy / highest_energy
             particle = Particle(
-                track.pos[0],
-                track.pos[1],
-                track.pos[2],
-                track.dir[0],
-                track.dir[1],
-                track.dir[2],
+                track.pos_x,
+                track.pos_y,
+                track.pos_z,
+                track.dir_x,
+                track.dir_y,
+                track.dir_z,
                 track.time,
                 constants.c,
                 self.colourist,
                 energy,
                 length=0)
             particle.hidden = not self.show_secondaries
-            if track.id == highest_energetic_track.id:
-                particle.color = (0.0, 1.0, 0.2)
-                particle.line_width = 3
-                particle.cherenkov_cone_enabled = True
-                particle.hidden = False
+            # if track.id == highest_energetic_track.id:
+            #     particle.color = (0.0, 1.0, 0.2)
+            #     particle.line_width = 3
+            #     particle.cherenkov_cone_enabled = True
+            #     particle.hidden = False
             self.objects.setdefault("mc_tracks", []).append(particle)
 
     def add_reco_tracks(self, blob):
@@ -507,6 +508,7 @@ class RainbowAlga(object):
             highest_energetic.hidden = False
 
     def load_next_blob(self):
+        print("Loading next blob")
         try:
             self.load_blob(self.event_index + 1)
         except IndexError:
@@ -866,17 +868,14 @@ class RainbowAlga(object):
         if not self.blob:
             return ''
         info_text = ''
-        try:
+        if 'start_event' in self.blob:
             event_number = self.blob['start_event'][0]
             info_text += "Event #{0}, ToT>{1}ns\n" \
                          .format(event_number, self.min_tot)
-        except KeyError:
-            pass
-        try:
+        if 'Neutrion' in self.blob:
             neutrino = self.blob['Neutrino']
             info_text += str(neutrino)
-        except KeyError:
-            pass
+
         return info_text
 
     def display_help(self):
