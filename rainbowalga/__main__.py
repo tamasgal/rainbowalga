@@ -416,7 +416,15 @@ class RainbowAlga(object):
             print("No MCTracks found.")
             return
 
-        print(track_ins)
+        event_info = blob['EventInfo']
+        timestamp_in_ns = event_info.timestamp * 1e9 + event_info.nanoseconds
+
+        from km3modules.mc import convert_mc_times_to_jte_times
+        time_converter = np.frompyfunc(convert_mc_times_to_jte_times, 3, 1)
+        track_ins['time'] = time_converter(track_ins.time, timestamp_in_ns,
+                                           event_info.mc_time)
+
+        # print(track_ins)
 
         # try:
         #     highest_energetic_track = max(track_ins, key=lambda t: t.E)
