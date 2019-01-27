@@ -434,14 +434,9 @@ class RainbowAlga(object):
         #     # highest_energy = highest_energetic_track.energy
 
         for track in track_ins:
-            try:  # legacy format from EVT
-                particle_type = track.particle_type
-                energy = track.E
-                track_length = track.length
-            except AttributeError:  # new format
-                particle_type = track.type
-                energy = track.energy
-                track_length = 1e6  # mmmmhhh
+            particle_type = track.type
+            energy = track.energy
+            track_length = np.abs(track.length)
             print("Track length: {0}".format(track_length))
             if particle_type in (0, 22):  # skip unknowns, photons
                 continue
@@ -463,7 +458,7 @@ class RainbowAlga(object):
                 constants.c,
                 self.colourist,
                 energy,
-                length=0)
+                length=track_length)
             particle.hidden = not self.show_secondaries
             # if track.id == highest_energetic_track.id:
             #     particle.color = (0.0, 1.0, 0.2)
