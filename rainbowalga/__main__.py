@@ -235,27 +235,26 @@ class RainbowAlga(object):
                 'time_residuals_point_source', 'time_residuals_cherenkov_cone'
         ]:
             try:
-                track_ins = blob[self._hits_key]
+                track_ins = blob['McTracks']
             except KeyError:
                 log.error("No tracks found to determine Cherenkov parameters!")
                 self.current_spectrum = "default"
                 return
-            most_energetic_muon = max(track_ins, key=lambda t: t.E)
-            if not pdg2name(most_energetic_muon.particle_type)  \
-                    in ['mu-', 'mu+']:
-                log.error("No muon found to determine Cherenkov parameters!")
-                self.current_spectrum = "default"
-                return
+            # most_energetic_muon = max(track_ins, key=lambda t: t.E)
+            muon_pos = np.mean(track_ins.pos)
+            muon_dir = track_ins.dir[0]
+            # if not pdg2name(most_energetic_muon.particle_type)  \
+            #         in ['mu-', 'mu+']:
+            #     log.error("No muon found to determine Cherenkov parameters!")
+            #     self.current_spectrum = "default"
+            #     return
 
             hits = self.extract_hits(blob)
             hits = self.first_om_hits(hits)
 
             def cherenkov_time(pmt_pos):
                 """Calculates Cherenkov arrival time in [ns]"""
-                vertex_pos = most_energetic_muon.pos
-                muon_dir = most_energetic_muon.dir
-
-                v = pmt_pos - vertex_pos
+                v = pmt_pos - muon_pos
                 l = v.dot(muon_dir)
                 k = np.sqrt(v.dot(v) - l**2)
                 v_g = constants.c_water_km3net
@@ -806,9 +805,9 @@ class RainbowAlga(object):
 
     def special_keyboard(self, key, x, z):
         if key == GLUT_KEY_LEFT:
-            self.clock.rewind(100)
+            self.clock.rewind(300)
         if key == GLUT_KEY_RIGHT:
-            self.clock.fast_forward(100)
+            self.clock.fast_forward(300)
 
     def drag(self, x, y):
         if self.drag_mode == 'rotate':
