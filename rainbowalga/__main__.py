@@ -105,6 +105,7 @@ class RainbowAlga(object):
         self.event_index = skip_to_blob
         self.is_recording = False
         self.min_tot = min_tot
+        self.time_offset = 0
 
         VERTEX_SHADER = compileShader(
             """
@@ -188,6 +189,7 @@ class RainbowAlga(object):
 
         self.objects = {}
         self.shaded_objects = []
+        self.time_offset = 0
 
         try:
             self.add_neutrino(blob)
@@ -218,6 +220,8 @@ class RainbowAlga(object):
             self.min_hit_time = min(hit_times)
             self.max_hit_time = max(hit_times)
 
+            self.time_offset = self.min_hit_time
+
             self.clock._global_offset = self.min_hit_time / self.clock.speed
 
             def spectrum(time, hit=None):
@@ -237,17 +241,19 @@ class RainbowAlga(object):
                 'time_residuals_point_source', 'time_residuals_cherenkov_cone'
         ]:
             try:
-                track_ins = blob[self._hits_key]
+                track_ins = blob['McTracks']
             except KeyError:
                 log.error("No tracks found to determine Cherenkov parameters!")
                 self.current_spectrum = "default"
                 return
-            most_energetic_muon = max(track_ins, key=lambda t: t.E)
-            if not pdg2name(most_energetic_muon.particle_type)  \
-                    in ['mu-', 'mu+']:
-                log.error("No muon found to determine Cherenkov parameters!")
-                self.current_spectrum = "default"
-                return
+            # most_energetic_muon = max(track_ins, key=lambda t: t.E)
+            muon_pos = np.mean(track_ins.pos)
+            muon_dir = track_ins.dir[0]
+            # if not pdg2name(most_energetic_muon.particle_type)  \
+            #         in ['mu-', 'mu+']:
+            #     log.error("No muon found to determine Cherenkov parameters!")
+            #     self.current_spectrum = "default"
+            #     return
 
             hits = self.extract_hits(blob)
             if hits is None:
@@ -256,10 +262,7 @@ class RainbowAlga(object):
 
             def cherenkov_time(pmt_pos):
                 """Calculates Cherenkov arrival time in [ns]"""
-                vertex_pos = most_energetic_muon.pos
-                muon_dir = most_energetic_muon.dir
-
-                v = pmt_pos - vertex_pos
+                v = pmt_pos - muon_pos
                 l = v.dot(muon_dir)
                 k = np.sqrt(v.dot(v) - l**2)
                 v_g = constants.c_water_km3net
@@ -441,14 +444,9 @@ class RainbowAlga(object):
         #     # highest_energy = highest_energetic_track.energy
 
         for track in track_ins:
-            try:  # legacy format from EVT
-                particle_type = track.particle_type
-                energy = track.E
-                track_length = track.length
-            except AttributeError:  # new format
-                particle_type = track.type
-                energy = track.energy
-                track_length = 1e6  # mmmmhhh
+            particle_type = track.type
+            energy = track.energy
+            track_length = np.abs(track.length)
             print("Track length: {0}".format(track_length))
             if particle_type in (0, 22):  # skip unknowns, photons
                 continue
@@ -470,7 +468,7 @@ class RainbowAlga(object):
                 constants.c,
                 self.colourist,
                 energy,
-                length=0)
+                length=track_length)
             particle.hidden = not self.show_secondaries
             # if track.id == highest_energetic_track.id:
             #     particle.color = (0.0, 1.0, 0.2)
@@ -720,8 +718,9 @@ class RainbowAlga(object):
             self.colourist.now_text()
             for hit_time in hit_times:
                 segment_nr = hit_times.index(hit_time)
-                draw_text_2d("{0:>5}ns".format(hit_time), width - 80,
-                             (height - max_y) + segment_height * segment_nr)
+                draw_text_2d(
+                    "{0:>5}ns".format(int(hit_time - self.time_offset)),
+                    width - 80, (height - max_y) + segment_height * segment_nr)
 
     def resize(self, width, height):
         if width < 400:
@@ -818,9 +817,9 @@ class RainbowAlga(object):
 
     def special_keyboard(self, key, x, z):
         if key == GLUT_KEY_LEFT:
-            self.clock.rewind(100)
+            self.clock.rewind(300)
         if key == GLUT_KEY_RIGHT:
-            self.clock.fast_forward(100)
+            self.clock.fast_forward(300)
 
     def drag(self, x, y):
         if self.drag_mode == 'rotate':
@@ -899,8 +898,9 @@ class RainbowAlga(object):
 
     def display_info(self):
         draw_text_2d(
-            "FPS:  {0:.1f}\nTime: {1:.0f} ns".format(self.clock.fps,
-                                                     self.clock.time), 10, 30)
+            "FPS:  {0:.1f}\nTime: {1:.0f} (+{2:.0f}) ns".format(
+                self.clock.fps, self.clock.time - self.time_offset,
+                self.time_offset), 10, 30)
         draw_text_2d(self.blob_info, 150, 30)
 
 
