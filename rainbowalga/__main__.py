@@ -205,6 +205,8 @@ class RainbowAlga(object):
 
         if style == 'default':
             hits = self.extract_hits(blob)
+            if hits is None:
+                return
             hits = self.remove_hidden_hits(hits)
 
             hit_times = hits.time
@@ -248,6 +250,8 @@ class RainbowAlga(object):
                 return
 
             hits = self.extract_hits(blob)
+            if hits is None:
+                return
             hits = self.first_om_hits(hits)
 
             def cherenkov_time(pmt_pos):
@@ -379,11 +383,11 @@ class RainbowAlga(object):
 
     def extract_hits(self, blob):
         log.debug("Entering extract_hits()")
-        try:
-            print(blob['Hits'])
-            hits = self.geometry.apply(blob['Hits'])
-        except KeyError:
-            raise SystemExit("No suitable hits found in the file!")
+        if 'Hits' not in blob:
+            log.error("No hits found in the blob!")
+            return
+        print(blob['Hits'])
+        hits = self.geometry.apply(blob['Hits'])
 
         print("Number of hits: {0}".format(len(hits)))
         if self.min_tot:
@@ -394,6 +398,9 @@ class RainbowAlga(object):
             print("Warning: consider applying a ToT filter to reduce the "
                   "amount of hits, according to your graphic cards "
                   "performance!")
+        if len(hits) == 0:
+            log.warning("No hits remaining after applying the ToT cut")
+            return
         return hits.sorted(by='time')
 
     def add_neutrino(self, blob):
