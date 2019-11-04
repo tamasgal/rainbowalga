@@ -12,7 +12,7 @@ import km3pipe as kp
 
 DOM_POSITIONS = np.array([
     tuple(pos) for pos in kp.hardware.Detector(
-        filename="/home/tgal/data/detx/KM3NeT_-00000001_20171212.detx").
+        filename="../rainbowalga/data/km3net_jul13_90m_r1494_corrected.detx").
     dom_positions.values()
 ], 'f')
 CAM_TARGET = np.mean(DOM_POSITIONS, axis=0)
