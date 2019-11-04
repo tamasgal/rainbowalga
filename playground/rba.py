@@ -108,45 +108,11 @@ class MainCanvas(qw.QOpenGLWidget):
 
         self.dom_positions_vbo = gla.vbo.VBO(DOM_POSITIONS)
 
+        gl.glClearDepth(1.0)
+        gl.glClearColor(0.0, 0.0, 0.0, 0.0)
         gl.glMatrixMode(gl.GL_PROJECTION)
         gl.glLoadIdentity()
         gl.glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 3000)
-
-        # gl.glClearDepth(1.0)
-        # gl.glClearColor(0.0, 0.0, 0.0, 0.0)
-        # gl.glMatrixMode(gl.GL_PROJECTION)
-        # gl.glLoadIdentity()
-        # gl.glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 3000)
-        #
-        # # Lighting
-        # light_ambient = (0.0, 0.0, 0.0, 1.0)
-        # light_diffuse = (1.0, 1.0, 1.0, 1.0)
-        # light_specular = (1.0, 1.0, 1.0, 1.0)
-        # light_position = (-100.0, 100.0, 100.0, 0.0)
-        #
-        # mat_ambient = (0.7, 0.7, 0.7, 1.0)
-        # mat_diffuse = (0.8, 0.8, 0.8, 1.0)
-        # mat_specular = (1.0, 1.0, 1.0, 1.0)
-        # high_shininess = (100)
-        #
-        # gl.glEnable(gl.GL_LIGHT0)
-        # gl.glEnable(gl.GL_NORMALIZE)
-        # gl.glEnable(gl.GL_COLOR_MATERIAL)
-        # gl.glEnable(gl.GL_LIGHTING)
-        #
-        # gl.glLightfv(gl.GL_LIGHT0, gl.GL_AMBIENT, light_ambient)
-        # gl.glLightfv(gl.GL_LIGHT0, gl.GL_DIFFUSE, light_diffuse)
-        # gl.glLightfv(gl.GL_LIGHT0, gl.GL_SPECULAR, light_specular)
-        # gl.glLightfv(gl.GL_LIGHT0, gl.GL_POSITION, light_position)
-        #
-        # gl.glMaterialfv(gl.GL_FRONT, gl.GL_AMBIENT, mat_ambient)
-        # gl.glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, mat_diffuse)
-        # gl.glMaterialfv(gl.GL_FRONT, gl.GL_SPECULAR, mat_specular)
-        # gl.glMaterialfv(gl.GL_FRONT, gl.GL_SHININESS, high_shininess)
-        #
-        # # Transparency
-        # gl.glEnable(gl.GL_BLEND)
-        # gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 
     def minimumSizeHint(self):
         return qc.QSize(100, 100)
@@ -160,7 +126,6 @@ class MainCanvas(qw.QOpenGLWidget):
 
         self.camera.look()
         self.camera.rotate_z(0.1)
-        # GLU.gluLookAt(1, 0, 0, *CAM_TARGET, 0, 0, 1)
 
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         self._shader_program.bind()
@@ -175,44 +140,12 @@ class MainCanvas(qw.QOpenGLWidget):
 
     def resizeGL(self, width, height):
         gl.glViewport(0, 0, width, height)
-        # side = min(width, height)
-        # if side < 0:
-        #     return
-        #
-        # gl.glViewport((width - side) // 2, (height - side) // 2, side, side)
-        #
-        # gl.glMatrixMode(gl.GL_PROJECTION)
-        # gl.glLoadIdentity()
-        # gl.glOrtho(-0.5, +0.5, +0.5, -0.5, 4.0, 15.0)
-        # gl.glMatrixMode(gl.GL_MODELVIEW)
-
-    # def draw_detector(self):
-    #     # check https://github.com/ChrisBeaumont/opengl_sandbox/blob/master/shader_demo.py
-    #     gl.glUseProgram(self.program)
-    #     self.dom_positions_vbo.bind()
-    #     # gl.glEnableVertexAttribArray(0)
-    #     # gl.glVertexAttribPointer(0, 2, gl.GL_FLOAT, gl.GL_FALSE, 0, None)
-    #     #
-    #     # gl.glDrawArrays(gl.GL_POINTS, 0, 3)
-    #
-    #     gl.glEnableClientState(gl.GL_VERTEX_ARRAY)
-    #     gl.glVertexPointerf(self.dom_positions_vbo)
-    #     gl.glPointSize(20)
-    #     gl.glDrawArrays(gl.GL_POINTS, 0, len(DOM_POSITIONS) * 3)
-    #     self.dom_positions_vbo.unbind()
-    #     gl.glDisableClientState(gl.GL_VERTEX_ARRAY)
-    #     gl.glUseProgram(0)
 
 
 def main():
     app = qw.QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    # import time
-    #
-    # while True:
-    #     time.sleep(0.1)
-    #     window.gl_widget.paintGL()
     sys.exit(app.exec_())
 
 
