@@ -25,7 +25,7 @@ class Camera(object):
         self.target = np.array([0, 0, 0])
         self.distance = distance
         self.up = np.array([0, 0, 1])
-        self._pos = np.array([1, 0, 0])
+        self._pos = np.array([1, 0, 1])
 
     @property
     def pos(self):
@@ -57,22 +57,42 @@ class MainWindow(qw.QWidget):
 
         self.gl_widget = MainCanvas()
 
+        self.slider = self.create_slider()
+        self.slider.valueChanged.connect(self.set_dom_color)
+
         layout = qw.QHBoxLayout()
         layout.addWidget(self.gl_widget)
+        layout.addWidget(self.slider)
         self.setLayout(layout)
 
         self.setWindowTitle("RainbowAlga")
+
+    def set_dom_color(self, value):
+        self.gl_widget.dom_color = np.array([0.1, value/100, 0.5, 1.0])
+
+    def create_slider(self):
+        slider = qw.QSlider(qc.Qt.Vertical)
+
+        slider.setRange(0, 100)
+        slider.setSingleStep(1)
+        slider.setPageStep(10)
+        slider.setTickInterval(10)
+        slider.setTickPosition(qw.QSlider.TicksRight)
+
+        return slider
 
 
 class MainCanvas(qw.QOpenGLWidget):
     def __init__(self, parent=None):
         super(qw.QOpenGLWidget, self).__init__(parent)
-        self.camera = Camera(target=CAM_TARGET, distance=1500)
+        self.camera = Camera(target=CAM_TARGET, distance=500)
 
         self.t = time.time()
         self._update_timer = qc.QTimer()
         self._update_timer.timeout.connect(self.update)
         self._update_timer.start(1e3 / 60.)
+
+        self.dom_color = np.array([0.3, 0.5, 0.8, 1.0])
 
     def get_opengl_info(self):
         info = """
@@ -95,8 +115,9 @@ class MainCanvas(qw.QOpenGLWidget):
             gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
         }"""
         fragment_src = """
+        uniform vec4 u_Color;
         void main() {
-            gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0);
+            gl_FragColor = u_Color;
         }
         """
         shader_program.addShaderFromSourceCode(QtGui.QOpenGLShader.Vertex,
@@ -129,6 +150,11 @@ class MainCanvas(qw.QOpenGLWidget):
 
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         self._shader_program.bind()
+
+        location = gl.glGetUniformLocation(self._shader_program.programId(),
+                                           "u_Color")
+        gl.glUniform4f(location, *self.dom_color)
+
         self.dom_positions_vbo.bind()
         gl.glEnableClientState(gl.GL_VERTEX_ARRAY)
         gl.glVertexPointerf(self.dom_positions_vbo)
