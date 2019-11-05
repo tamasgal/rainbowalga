@@ -110,14 +110,12 @@ class MainCanvas(QW.QOpenGLWidget):
 
         shader_program = QtGui.QOpenGLShaderProgram()
         vertex_src = """
-        #version 330 core
         layout (location = 0) in vec3 dom_pos
         void main() {
             // gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
             gl_Position = gl_ModelViewProjectionMatrix * dom_pos;
         }"""
         fragment_src = """
-        #version 330 core
         uniform vec4 u_Color;
         void main() {
             gl_FragColor = u_Color;
