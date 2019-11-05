@@ -3,12 +3,11 @@ import sys
 import numpy as np
 import time
 from PyQt5 import QtGui
-import PyQt5.QtCore as qc
-import PyQt5.QtWidgets as qw
-import OpenGL.GL as gl
-import OpenGL.GLU as glu
-import OpenGL.arrays as gla
-import OpenGL.GL.shaders as gls
+import PyQt5.QtCore as QC
+import PyQt5.QtWidgets as QW
+import OpenGL.GL as GL
+import OpenGL.GLU as GLU
+import OpenGL.arrays as GLA
 
 import km3pipe as kp
 
@@ -44,23 +43,23 @@ class Camera(object):
             [new_position[0, 0], new_position[0, 1], new_position[0, 2]])
 
     def look(self):
-        gl.glMatrixMode(gl.GL_MODELVIEW)
-        gl.glLoadIdentity()
-        glu.gluLookAt(self.pos[0], self.pos[1], self.pos[2], self.target[0],
+        GL.glMatrixMode(GL.GL_MODELVIEW)
+        GL.glLoadIdentity()
+        GLU.gluLookAt(self.pos[0], self.pos[1], self.pos[2], self.target[0],
                       self.target[1], self.target[2], self.up[0], self.up[1],
                       self.up[2])
 
 
-class MainWindow(qw.QWidget):
+class MainWindow(QW.QWidget):
     def __init__(self):
-        super(qw.QWidget, self).__init__()
+        super(QW.QWidget, self).__init__()
 
         self.gl_widget = MainCanvas()
 
         self.slider = self.create_slider()
         self.slider.valueChanged.connect(self.set_dom_color)
 
-        layout = qw.QHBoxLayout()
+        layout = QW.QHBoxLayout()
         layout.addWidget(self.gl_widget)
         layout.addWidget(self.slider)
         self.setLayout(layout)
@@ -68,27 +67,27 @@ class MainWindow(qw.QWidget):
         self.setWindowTitle("RainbowAlga")
 
     def set_dom_color(self, value):
-        self.gl_widget.dom_color = np.array([0.1, value/100, 0.5, 1.0])
+        self.gl_widget.dom_color = np.array([0.1, value / 100, 0.5, 1.0])
 
     def create_slider(self):
-        slider = qw.QSlider(qc.Qt.Vertical)
+        slider = QW.QSlider(QC.Qt.Vertical)
 
         slider.setRange(0, 100)
         slider.setSingleStep(1)
         slider.setPageStep(10)
         slider.setTickInterval(10)
-        slider.setTickPosition(qw.QSlider.TicksRight)
+        slider.setTickPosition(QW.QSlider.TicksRight)
 
         return slider
 
 
-class MainCanvas(qw.QOpenGLWidget):
+class MainCanvas(QW.QOpenGLWidget):
     def __init__(self, parent=None):
-        super(qw.QOpenGLWidget, self).__init__(parent)
+        super(QW.QOpenGLWidget, self).__init__(parent)
         self.camera = Camera(target=CAM_TARGET, distance=500)
 
         self.t = time.time()
-        self._update_timer = qc.QTimer()
+        self._update_timer = QC.QTimer()
         self._update_timer.timeout.connect(self.update)
         self._update_timer.start(1e3 / 60.)
 
@@ -100,10 +99,10 @@ class MainCanvas(qw.QOpenGLWidget):
             Renderer: {1}
             OpenGL Version: {2}
             Shader Version: {3}
-        """.format(gl.glGetString(gl.GL_VENDOR),
-                   gl.glGetString(gl.GL_RENDERER),
-                   gl.glGetString(gl.GL_VERSION),
-                   gl.glGetString(gl.GL_SHADING_LANGUAGE_VERSION))
+        """.format(GL.glGetString(GL.GL_VENDOR),
+                   GL.glGetString(GL.GL_RENDERER),
+                   GL.glGetString(GL.GL_VERSION),
+                   GL.glGetString(GL.GL_SHADING_LANGUAGE_VERSION))
         return info
 
     def initializeGL(self):
@@ -111,10 +110,14 @@ class MainCanvas(qw.QOpenGLWidget):
 
         shader_program = QtGui.QOpenGLShaderProgram()
         vertex_src = """
+        #version 330 core
+        layout (location = 0) in vec3 dom_pos
         void main() {
-            gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            // gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            gl_Position = gl_ModelViewProjectionMatrix * dom_pos;
         }"""
         fragment_src = """
+        #version 330 core
         uniform vec4 u_Color;
         void main() {
             gl_FragColor = u_Color;
@@ -127,49 +130,53 @@ class MainCanvas(qw.QOpenGLWidget):
         shader_program.link()
         self._shader_program = shader_program
 
-        self.dom_positions_vbo = gla.vbo.VBO(DOM_POSITIONS)
+        self.dom_positions_vbo = GLA.vbo.VBO(DOM_POSITIONS)
 
-        gl.glClearDepth(1.0)
-        gl.glClearColor(0.0, 0.0, 0.0, 0.0)
-        gl.glMatrixMode(gl.GL_PROJECTION)
-        gl.glLoadIdentity()
-        gl.glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 3000)
+        GL.glClearDepth(1.0)
+        GL.glClearColor(0.0, 0.0, 0.0, 0.0)
+        GL.glMatrixMode(GL.GL_PROJECTION)
+        GL.glLoadIdentity()
+        GL.glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 3000)
 
     def minimumSizeHint(self):
-        return qc.QSize(100, 100)
+        return QC.QSize(100, 100)
 
     def sizeHint(self):
-        return qc.QSize(500, 500)
+        return QC.QSize(500, 500)
 
     def paintGL(self):
-        # gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        # gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+        # GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+        # GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
         self.camera.look()
         self.camera.rotate_z(0.1)
 
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT)
         self._shader_program.bind()
 
-        location = gl.glGetUniformLocation(self._shader_program.programId(),
+        location = GL.glGetUniformLocation(self._shader_program.programId(),
                                            "u_Color")
-        gl.glUniform4f(location, *self.dom_color)
+        GL.glUniform4f(location, *self.dom_color)
 
         self.dom_positions_vbo.bind()
-        gl.glEnableClientState(gl.GL_VERTEX_ARRAY)
-        gl.glVertexPointerf(self.dom_positions_vbo)
-        gl.glPointSize(2)
-        gl.glDrawArrays(gl.GL_POINTS, 0, len(DOM_POSITIONS) * 3)
+        GL.glEnableClientState(GL.GL_VERTEX_ARRAY)
+        GL.glVertexPointerf(self.dom_positions_vbo)
+        # GL.glVertexAttribPointer(0, len(DOM_POSITIONS), GL.GL_FLOAT,
+        #                          GL.GL_FALSE, 3 * 4, 0)
+        # GL.glEnableVertexAttribArray(0)
+
+        GL.glPointSize(2)
+        GL.glDrawArrays(GL.GL_POINTS, 0, len(DOM_POSITIONS) * 3)
         self.dom_positions_vbo.unbind()
-        gl.glDisableClientState(gl.GL_VERTEX_ARRAY)
-        gl.glUseProgram(0)
+        GL.glDisableClientState(GL.GL_VERTEX_ARRAY)
+        GL.glUseProgram(0)
 
     def resizeGL(self, width, height):
-        gl.glViewport(0, 0, width, height)
+        GL.glViewport(0, 0, width, height)
 
 
 def main():
-    app = qw.QApplication(sys.argv)
+    app = QW.QApplication(sys.argv)
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
