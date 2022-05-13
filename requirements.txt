@@ -2,5 +2,6 @@ Pillow
 PyOpenGL
 freetype-py
 numpy
-km3pipe>=8.4.1
+km3io
+km3pipe>=9.1.0
 docopt
