@@ -5,15 +5,16 @@ RainbowAlga
 
 Usage:
     rainbowalga
-    rainbowalga [options] [EVENT_FILE]
+    rainbowalga [options] [ROOT_FILE]
     rainbowalga (-h | --help)
     rainbowalga --version
 
 Options:
-    EVENT_FILE         Event file (currently only EVT).
+    ROOT_FILE          The ROOT file containing the events.
     -h --help          Show this screen.
     -v --version       Show version.
     -d DETECTOR        Detector file (DETX) or detector ID (eg. D_ARCA003).
+                       If not provided, rainbowalga will try to figure it out.
     -t MIN_TOT         ToT threshold in ns [default=30].
     -s INDEX           Skip to event at index [default=0].
 
@@ -64,8 +65,11 @@ from km3pipe.dataclasses import Vec3
 from km3pipe.hardware import Detector
 from km3pipe.mc import pdg2name
 from km3pipe.math import angle_between
-from km3pipe.io import GenericPump
 from km3pipe.calib import Calibration
+
+import km3io
+import km3pipe as kp
+import km3modules as km
 
 from km3pipe.logger import logging
 log = logging.getLogger('rainbowalga')  # pylint: disable=C0103
@@ -75,7 +79,7 @@ log = logging.getLogger('rainbowalga')  # pylint: disable=C0103
 
 class RainbowAlga(object):
     def __init__(self,
-                 detector_file=None,
+                 detector=None,
                  event_file=None,
                  min_tot=None,
                  skip_to_blob=0,
@@ -90,9 +94,6 @@ class RainbowAlga(object):
 
         current_path = os.path.dirname(os.path.abspath(__file__))
 
-        if not detector_file:
-            filepath = 'data/km3net_jul13_90m_r1494_corrected.detx'
-            detector_file = os.path.join(current_path, filepath)
 
         self.load_logo()
 
@@ -138,12 +139,22 @@ class RainbowAlga(object):
         self.min_hit_time = None
         self.max_hit_time = None
 
-        if detector_file.endswith('.detx'):
-            self.detector = Detector(filename=detector_file)
-            self.geometry = Calibration(filename=detector_file)
+
+        if detector is None:
+            if event_file is None:
+                filepath = 'data/km3net_jul13_90m_r1494_corrected.detx'
+                detector_file = os.path.join(current_path, filepath)
+                self.geometry = Calibration(filename=detector_file)
+            else:
+                raise NotImplemented("Figuring out of the DETX is not implemented yet")
+
         else:
-            self.detector = Detector(det_id=detector_file)
-            self.geometry = Calibration(det_id=detector_file)
+            if detector.endswith('.detx'):
+                self.geometry = Calibration(filename=detector)
+            else:
+                self.geometry = Calibration(det_id=detector)
+
+        self.detector = self.geometry.detector
 
         dom_pos = self.detector.dom_positions.values()
         min_z = min([z for x, y, z in dom_pos])
@@ -154,7 +165,8 @@ class RainbowAlga(object):
         self.dom_positions_vbo = vbo.VBO(self.dom_positions)
 
         if event_file:
-            self.pump = GenericPump(event_file)
+            # self.offline_reader = km3io.OfflineReader(event_file)
+            self.online_reader = km3io.OnlineReader(event_file)
 
             try:
                 self.load_blob(skip_to_blob)
@@ -185,28 +197,28 @@ class RainbowAlga(object):
 
     def load_blob(self, index=0):
         print("Loading blob {0}...".format(index))
-        blob = self.blob = self.pump.get_blob(index)
+        event = self.online_event = self.online_reader.events[index]
 
         self.objects = {}
         self.shaded_objects = []
         self.time_offset = 0
 
-        try:
-            self.add_neutrino(blob)
-        except TypeError:
-            pass
-        self.add_mc_tracks(blob)
-        self.add_reco_tracks(blob)
+        # if len(event.mc_tracks[:]) > 0:
+        #     nu = event.mc_tracks[0]
+        #     if abs(nu.pdgid) in {12, 14, 16}:
+        #         self.add_neutrino(nu)
+        #self.add_mc_tracks(event)
+        #self.add_reco_tracks(event)
 
-        self.initialise_spectrum(blob, style=self.current_spectrum)
+        self.initialise_spectrum(event, style=self.current_spectrum)
 
     def reload_blob(self):
         self.load_blob(self.event_index)
 
-    def initialise_spectrum(self, blob, style="default"):
+    def initialise_spectrum(self, event, style="default"):
 
         if style == 'default':
-            hits = self.extract_hits(blob)
+            hits = self.extract_hits(event)
             if hits is None:
                 return
             hits = self.remove_hidden_hits(hits)
@@ -384,13 +396,16 @@ class RainbowAlga(object):
         print("Number of first OM hits: {0}".format(len(hits)))
         return hits
 
-    def extract_hits(self, blob):
+    def extract_hits(self, event):
         log.debug("Entering extract_hits()")
-        if 'Hits' not in blob:
-            log.error("No hits found in the blob!")
-            return
-        print(blob['Hits'])
-        hits = self.geometry.apply(blob['Hits'])
+
+        h = event.snapshot_hits
+        hits = self.geometry.apply(kp.Table({
+            "dom_id": h.dom_id,
+            "tot": h.tot,
+            "time": h.time,
+            "channel_id": h.channel_id,
+        }))
 
         print("Number of hits: {0}".format(len(hits)))
         if self.min_tot:
@@ -406,47 +421,28 @@ class RainbowAlga(object):
             return
         return hits.sorted(by='time')
 
-    def add_neutrino(self, blob):
+    def add_neutrino(self, neutrino):
         """Add the neutrino to the scene."""
-        if 'Neutrino' not in blob:
-            return
-        print(neutrino)
-        pos = neutrino.pos
-        particle = Neutrino(pos[0], pos[1], pos[2], neutrino.dir.x,
-                            neutrino.dir.y, neutrino.dir.z, 0)
+        nu = neutrino
+        particle = Neutrino(nu.pos_x, nu.pos_y, nu.pos_z,
+                            nu.dir_x, nu.dir_y, nu.dir_z, 0)
         particle.color = (1.0, 0.0, 0.0)
         particle.line_width = 3
         self.objects.setdefault("neutrinos", []).append(particle)
 
-    def add_mc_tracks(self, blob):
+    def add_mc_tracks(self, event):
         """Find MC particles and add them to the objects to render."""
-        try:
-            track_ins = blob['McTracks']
-        except KeyError:
-            print("No MCTracks found.")
-            return
-
-        event_info = blob['EventInfo']
-        timestamp_in_ns = event_info.timestamp * 1e9 + event_info.nanoseconds
+        timestamp_in_ns = event.t_sec * 1e9 + event.t_ns
 
         from km3modules.mc import convert_mc_times_to_jte_times
         time_converter = np.frompyfunc(convert_mc_times_to_jte_times, 3, 1)
-        track_ins['time'] = time_converter(track_ins.time, timestamp_in_ns,
-                                           event_info.mc_time)
 
-        # print(track_ins)
+        for i in range(event.n_tracks):
+            track = event.mc_tracks[i]
 
-        # try:
-        #     highest_energetic_track = max(track_ins, key=lambda t: t.E)
-        #     # highest_energy = highest_energetic_track.E
-        # except AttributeError:  # hdf5 mc tracks are not implemented yet
-        #     highest_energetic_track = max(track_ins, key=lambda t: t.energy)
-        #     # highest_energy = highest_energetic_track.energy
-
-        for track in track_ins:
-            particle_type = track.type
-            energy = track.energy
-            track_length = np.abs(track.length)
+            particle_type = track.pdgid
+            energy = track.E
+            track_length = np.abs(track.len)
             print("Track length: {0}".format(track_length))
             if particle_type in (0, 22):  # skip unknowns, photons
                 continue
@@ -464,7 +460,7 @@ class RainbowAlga(object):
                 track.dir_x,
                 track.dir_y,
                 track.dir_z,
-                track.time,
+                time_converter(track.t, timestamp_in_ns, event.mc_t),
                 constants.c,
                 self.colourist,
                 energy,
@@ -907,8 +903,8 @@ class RainbowAlga(object):
 def main():
     from docopt import docopt
     arguments = docopt(__doc__, version=version)
-    event_file = arguments['EVENT_FILE']
-    detector_file = arguments['-d']
+    event_file = arguments['ROOT_FILE']
+    detector = arguments['-d']
 
     try:
         min_tot = float(arguments['-t'])
@@ -919,7 +915,7 @@ def main():
     except TypeError:
         skip_to_blob = 0
 
-    app = RainbowAlga(detector_file, event_file, min_tot, skip_to_blob)  # noqa
+    app = RainbowAlga(detector, event_file, min_tot, skip_to_blob)  # noqa
 
 
 if __name__ == "__main__":

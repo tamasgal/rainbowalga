@@ -2,7 +2,7 @@
 import sys
 import numpy as np
 import time
-from PyQt5 import QtGui
+from PyQt5 import QtGui, QtOpenGL
 import PyQt5.QtCore as QC
 import PyQt5.QtWidgets as QW
 import OpenGL.GL as GL
@@ -81,9 +81,15 @@ class MainWindow(QW.QWidget):
         return slider
 
 
-class MainCanvas(QW.QOpenGLWidget):
+class MainCanvas(QW.QGLWidget):
     def __init__(self, parent=None):
-        super(QW.QOpenGLWidget, self).__init__(parent)
+        fmt = QtOpenGL.QGLFormat()
+        fmt.setVersion(3, 3)
+        fmt.setProfile(QtOpenGL.QGLFormat.CoreProfile)
+        fmt.setSampleBuffers(True)
+
+        super(QW.QGLWidget, self).__init__(fmt, None)
+
         self.camera = Camera(target=CAM_TARGET, distance=500)
 
         self.t = time.time()
@@ -110,12 +116,14 @@ class MainCanvas(QW.QOpenGLWidget):
 
         shader_program = QtGui.QOpenGLShaderProgram()
         vertex_src = """
+        #version 410 core
         layout (location = 0) in vec3 dom_pos
         void main() {
             // gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
             gl_Position = gl_ModelViewProjectionMatrix * dom_pos;
         }"""
         fragment_src = """
+        #version 410 core
         uniform vec4 u_Color;
         void main() {
             gl_FragColor = u_Color;
